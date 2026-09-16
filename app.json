@@ -1,0 +1,63 @@
+{
+  "expo": {
+    "name": "KBS Main Courante",
+    "slug": "kbs-main-courante",
+    "scheme": "kbsmaincourante",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kbsassistance.maincourante"
+    },
+    "android": {
+      "package": "com.kbsassistance.maincourante",
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-sqlite",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "KBS Main Courante a besoin de votre position pour horodater vos prises et fins de service."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "KBS Main Courante a besoin de l'appareil photo pour joindre des photos à vos événements de main courante."
+        }
+      ],
+      "expo-sharing",
+      [
+        "expo-notifications",
+        {
+          "color": "#1d4ed8"
+        }
+      ],
+      "@react-native-community/datetimepicker"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "09f2682a-5019-4245-acdf-a8114e8b40a0"
+      }
+    },
+    "owner": "hassengh"
+  }
+}
