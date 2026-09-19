@@ -15,7 +15,7 @@ export interface AgentOption {
 interface MissionRow {
   id: string;
   site_id: string;
-  agent_id: string;
+  agent_id: string | null;
   created_by: string;
   scheduled_start: string;
   scheduled_end: string | null;
@@ -26,6 +26,7 @@ interface MissionRow {
   current_lng: number | null;
   current_location_at: string | null;
   created_at: string;
+  is_broadcast: boolean;
   sites?: { name: string; lat: number | null; lng: number | null } | null;
   agent?: { full_name: string } | null;
   shifts?: { start_at: string }[] | null;
@@ -54,10 +55,11 @@ function toMission(row: MissionRow): MissionWithNames {
     currentLng: row.current_lng,
     currentLocationAt: row.current_location_at,
     createdAt: row.created_at,
+    isBroadcast: row.is_broadcast,
     siteName: row.sites?.name ?? '—',
     siteLat: row.sites?.lat ?? null,
     siteLng: row.sites?.lng ?? null,
-    agentName: row.agent?.full_name ?? '—',
+    agentName: row.agent?.full_name ?? (row.is_broadcast ? 'Diffusée à tous' : '—'),
     actualStartAt: row.shifts?.[0]?.start_at ?? null,
   };
 }
@@ -77,11 +79,14 @@ export async function listAgents(): Promise<AgentOption[]> {
 
 export interface CreateMissionInput {
   siteId: string;
-  agentId: string;
+  // null only when isBroadcast is true -- diffused to every org agent
+  // instead of one named agent (RLS/CHECK enforce this pairing server-side).
+  agentId: string | null;
   createdBy: string;
   scheduledStart: string;
   scheduledEnd?: string | null;
   instructions?: string | null;
+  isBroadcast?: boolean;
 }
 
 export async function createMission(input: CreateMissionInput): Promise<{ error: string | null }> {
@@ -92,7 +97,70 @@ export async function createMission(input: CreateMissionInput): Promise<{ error:
     scheduled_start: input.scheduledStart,
     scheduled_end: input.scheduledEnd ?? null,
     instructions: input.instructions ?? null,
+    is_broadcast: input.isBroadcast ?? false,
   });
+  return { error: error?.message ?? null };
+}
+
+/** Broadcast missions open to any org agent (unclaimed: agent_id is null). */
+export async function listBroadcastMissions(): Promise<MissionWithNames[]> {
+  const { data, error } = await supabase
+    .from('missions')
+    .select(MISSION_SELECT_WITH_NAMES)
+    .eq('is_broadcast', true)
+    .is('agent_id', null)
+    .eq('status', 'proposed')
+    .order('scheduled_start', { ascending: true });
+  if (error || !data) return [];
+  return (data as unknown as MissionRow[]).map(toMission);
+}
+
+/**
+ * Race-safe "first to accept wins" claim: a plain conditional UPDATE, not an
+ * RPC -- Postgres's own row-locking + EvalPlanQual re-check on concurrent
+ * UPDATEs to the same row is what makes this atomic. `.select().single()`
+ * forces PostgREST to error (PGRST116) when the WHERE clause matches 0 rows,
+ * which is how we detect "someone else already claimed it."
+ */
+export async function claimBroadcastMission(
+  missionId: string,
+  agentId: string
+): Promise<{ error: string | null; alreadyClaimed: boolean }> {
+  const { error } = await supabase
+    .from('missions')
+    .update({ agent_id: agentId, status: 'accepted', responded_at: new Date().toISOString() })
+    .eq('id', missionId)
+    .is('agent_id', null)
+    .eq('status', 'proposed')
+    .select()
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') return { error: null, alreadyClaimed: true };
+    return { error: error.message, alreadyClaimed: false };
+  }
+  return { error: null, alreadyClaimed: false };
+}
+
+export interface ReassignMissionInput {
+  agentId: string | null;
+  isBroadcast: boolean;
+}
+
+/** Reopens a cancelled/refused mission -- to a newly-named agent, or back to broadcast. */
+export async function reassignMission(
+  missionId: string,
+  input: ReassignMissionInput
+): Promise<{ error: string | null }> {
+  const { error } = await supabase
+    .from('missions')
+    .update({
+      agent_id: input.agentId,
+      is_broadcast: input.isBroadcast,
+      status: 'proposed',
+      responded_at: null,
+    })
+    .eq('id', missionId);
   return { error: error?.message ?? null };
 }
 

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Feather } from '@expo/vector-icons';
 import type { ServiceStackParamList } from '../../../navigation/AgentStack';
 import { CategoryGrid } from '../../../components/CategoryGrid';
 import { ItemChecklist } from '../../../components/ItemChecklist';
@@ -21,6 +22,7 @@ import { createEvent } from '../../../db/repositories/eventsRepo';
 import { createPhoto } from '../../../db/repositories/photosRepo';
 import { beginLocationFix, withTimeout } from '../../../lib/location';
 import { runSync, refreshPendingCount } from '../../../sync/syncEngine';
+import { colors, spacing, radius, typography, cardShadow } from '../../../theme';
 
 type Props = NativeStackScreenProps<ServiceStackParamList, 'EventEntry'>;
 
@@ -94,7 +96,7 @@ export default function EventEntryScreen({ route, navigation }: Props) {
 
   if (!category) {
     return (
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
         <Text style={styles.sectionTitle}>Choisir une catégorie</Text>
         <CategoryGrid selectedCategoryCode={null} onSelect={setCategory} />
       </ScrollView>
@@ -102,23 +104,28 @@ export default function EventEntryScreen({ route, navigation }: Props) {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
       <Pressable
+        style={styles.changeCategoryRow}
         onPress={() => {
           setCategory(null);
           setItemCodes([]);
         }}
       >
-        <Text style={styles.changeCategory}>‹ Changer de catégorie</Text>
+        <Feather name="chevron-left" size={16} color={colors.primary} />
+        <Text style={styles.changeCategory}>Changer de catégorie</Text>
       </Pressable>
       <Text style={styles.sectionTitle}>{category.label}</Text>
-      <ItemChecklist items={category.items} selectedItemCodes={itemCodes} onToggle={toggleItem} />
+      <View style={styles.card}>
+        <ItemChecklist items={category.items} selectedItemCodes={itemCodes} onToggle={toggleItem} />
+      </View>
 
       <Text style={styles.sectionTitle}>Commentaire (optionnel)</Text>
       <TextInput
         style={styles.commentInput}
         multiline
         placeholder="Précisions…"
+        placeholderTextColor={colors.textMuted}
         value={comment}
         onChangeText={setComment}
       />
@@ -132,11 +139,14 @@ export default function EventEntryScreen({ route, navigation }: Props) {
         disabled={!canSave || saving || photoCapturing}
       >
         {saving ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={colors.textOnPrimary} />
         ) : (
-          <Text style={styles.saveButtonText}>
-            {photoCapturing ? 'Traitement de la photo…' : 'Enregistrer'}
-          </Text>
+          <>
+            <Feather name="save" size={17} color={colors.textOnPrimary} />
+            <Text style={styles.saveButtonText}>
+              {photoCapturing ? 'Traitement de la photo…' : 'Enregistrer'}
+            </Text>
+          </>
         )}
       </Pressable>
     </ScrollView>
@@ -144,25 +154,39 @@ export default function EventEntryScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16, gap: 12 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', marginTop: 8 },
-  changeCategory: { color: '#1d4ed8', fontSize: 14 },
+  screen: { backgroundColor: colors.background },
+  container: { padding: spacing.lg, gap: spacing.md },
+  sectionTitle: { ...typography.label, color: colors.textSecondary, marginTop: spacing.sm },
+  changeCategoryRow: { flexDirection: 'row', alignItems: 'center' },
+  changeCategory: { color: colors.primary, fontSize: 14, fontWeight: '600' },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    ...cardShadow,
+  },
   commentInput: {
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 12,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.md,
     minHeight: 80,
     textAlignVertical: 'top',
     fontSize: 15,
+    color: colors.textPrimary,
   },
   saveButton: {
-    backgroundColor: '#1d4ed8',
-    borderRadius: 10,
-    padding: 16,
+    flexDirection: 'row',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
+    padding: spacing.lg,
     alignItems: 'center',
-    marginTop: 16,
+    justifyContent: 'center',
+    marginTop: spacing.sm,
+    ...cardShadow,
   },
-  saveButtonDisabled: { backgroundColor: '#93c5fd' },
-  saveButtonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  saveButtonDisabled: { backgroundColor: colors.textMuted },
+  saveButtonText: { color: colors.textOnPrimary, fontWeight: '700', fontSize: 16 },
 });

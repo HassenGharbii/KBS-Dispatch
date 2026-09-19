@@ -1,7 +1,9 @@
 import React, { useMemo } from 'react';
 import { View, Text, SectionList, StyleSheet, ActivityIndicator } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { Feather } from '@expo/vector-icons';
 import { supabase } from '../../../lib/supabase';
+import { colors, spacing, radius, cardShadow } from '../../../theme';
 
 interface HoursSummaryRow {
   agent_id: string;
@@ -77,7 +79,7 @@ export default function StatsOverviewScreen() {
   if (summaryQuery.isLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -86,54 +88,84 @@ export default function StatsOverviewScreen() {
 
   return (
     <SectionList
+      style={styles.screen}
       sections={sections}
       keyExtractor={(item) => item.siteId}
       onRefresh={() => summaryQuery.refetch()}
       refreshing={summaryQuery.isRefetching}
       contentContainerStyle={styles.list}
-      ListHeaderComponent={<Text style={styles.monthLabel}>Heures cumulées — {monthLabel}</Text>}
+      ListHeaderComponent={
+        <View style={styles.monthLabelRow}>
+          <Feather name="bar-chart-2" size={15} color={colors.textPrimary} />
+          <Text style={styles.monthLabel}>Heures cumulées — {monthLabel}</Text>
+        </View>
+      }
       renderSectionHeader={({ section }) => (
         <View style={styles.sectionHeader}>
+          <View style={styles.sectionHeaderIcon}>
+            <Feather name="user" size={14} color={colors.primary} />
+          </View>
           <Text style={styles.agentName}>{section.title}</Text>
           <Text style={styles.agentTotal}>{formatHours(section.totalHours)}</Text>
         </View>
       )}
       renderItem={({ item }) => (
         <View style={styles.siteRow}>
+          <Feather name="map-pin" size={13} color={colors.textSecondary} />
           <Text style={styles.siteName}>{item.siteName}</Text>
           <Text style={styles.siteHours}>
             {formatHours(item.hours)} · {item.shiftCount} service(s)
           </Text>
         </View>
       )}
-      ListEmptyComponent={<Text style={styles.empty}>Aucune heure enregistrée ce mois-ci.</Text>}
+      ListEmptyComponent={
+        <View style={styles.emptyBox}>
+          <Feather name="bar-chart-2" size={22} color={colors.textMuted} />
+          <Text style={styles.empty}>Aucune heure enregistrée ce mois-ci.</Text>
+        </View>
+      }
     />
   );
 }
 
 const styles = StyleSheet.create({
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  list: { padding: 16 },
-  monthLabel: { fontSize: 14, color: '#6b7280', marginBottom: 12, textTransform: 'capitalize' },
+  screen: { backgroundColor: colors.background },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
+  list: { padding: spacing.lg },
+  monthLabelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.md },
+  monthLabel: { fontSize: 14, color: colors.textSecondary, textTransform: 'capitalize' },
   sectionHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: '#f3f4f6',
-    borderRadius: 8,
-    padding: 10,
-    marginTop: 12,
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginTop: spacing.md,
+    ...cardShadow,
   },
-  agentName: { fontSize: 15, fontWeight: '700', color: '#111827' },
-  agentTotal: { fontSize: 15, fontWeight: '700', color: '#1d4ed8' },
+  sectionHeaderIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: radius.full,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  agentName: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, flex: 1 },
+  agentTotal: { fontSize: 15, fontWeight: '700', color: colors.primary },
   siteRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    paddingHorizontal: 4,
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
   },
-  siteName: { fontSize: 14, color: '#374151' },
-  siteHours: { fontSize: 13, color: '#6b7280' },
-  empty: { color: '#6b7280', fontStyle: 'italic', marginTop: 24, textAlign: 'center' },
+  siteName: { fontSize: 14, color: colors.textPrimary, flex: 1 },
+  siteHours: { fontSize: 13, color: colors.textSecondary },
+  empty: { color: colors.textMuted, fontStyle: 'italic', textAlign: 'center' },
+  emptyBox: { alignItems: 'center', gap: spacing.sm, marginTop: spacing.xl },
 });

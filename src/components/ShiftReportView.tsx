@@ -1,8 +1,10 @@
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { REFERENCE_LIST, type CategoryCode } from '../constants/referenceList';
 import { PhotoThumbnail } from './PhotoThumbnail';
 import { formatDateTime, formatDuration } from '../lib/shiftReportFormatting';
+import { colors, spacing, radius, cardShadow } from '../theme';
 
 // Display-only view model — deliberately decoupled from the full domain
 // types (LogbookEvent/Photo) since the agent (local SQLite) and dirigeant
@@ -26,6 +28,16 @@ export interface ShiftReportViewProps {
   onPhotoPress?: (uri: string) => void;
 }
 
+function InfoRow({ icon, label, value }: { icon: keyof typeof Feather.glyphMap; label: string; value: string }) {
+  return (
+    <View style={styles.infoRow}>
+      <Feather name={icon} size={14} color={colors.textSecondary} style={styles.infoIcon} />
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={styles.infoValue}>{value}</Text>
+    </View>
+  );
+}
+
 export function ShiftReportView({
   agentName,
   siteName,
@@ -35,17 +47,23 @@ export function ShiftReportView({
   onPhotoPress,
 }: ShiftReportViewProps) {
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Compte rendu de service</Text>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
+      <View style={styles.titleRow}>
+        <Feather name="file-text" size={18} color={colors.textPrimary} />
+        <Text style={styles.title}>Compte rendu de service</Text>
+      </View>
       <View style={styles.headerBlock}>
-        <Text style={styles.headerLine}>Agent : {agentName}</Text>
-        <Text style={styles.headerLine}>Site : {siteName}</Text>
-        <Text style={styles.headerLine}>Début : {formatDateTime(startAt)}</Text>
-        <Text style={styles.headerLine}>Fin : {endAt ? formatDateTime(endAt) : 'en cours'}</Text>
-        <Text style={styles.headerLine}>Durée : {formatDuration(startAt, endAt)}</Text>
+        <InfoRow icon="user" label="Agent" value={agentName} />
+        <InfoRow icon="map-pin" label="Site" value={siteName} />
+        <InfoRow icon="log-in" label="Début" value={formatDateTime(startAt)} />
+        <InfoRow icon="log-out" label="Fin" value={endAt ? formatDateTime(endAt) : 'en cours'} />
+        <InfoRow icon="clock" label="Durée" value={formatDuration(startAt, endAt)} />
       </View>
 
-      <Text style={styles.sectionTitle}>Événements ({events.length})</Text>
+      <View style={styles.sectionTitleRow}>
+        <Feather name="clipboard" size={15} color={colors.primary} />
+        <Text style={styles.sectionTitle}>Événements ({events.length})</Text>
+      </View>
       {events.length === 0 && <Text style={styles.empty}>Aucun événement enregistré.</Text>}
       {events.map((event) => {
         const category = REFERENCE_LIST.find((c) => c.code === event.categoryCode);
@@ -77,22 +95,39 @@ export function ShiftReportView({
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16, gap: 12 },
-  title: { fontSize: 20, fontWeight: '700', marginBottom: 4 },
-  headerBlock: { backgroundColor: '#f3f4f6', borderRadius: 10, padding: 12, gap: 4 },
-  headerLine: { fontSize: 14, color: '#111827' },
-  sectionTitle: { fontSize: 16, fontWeight: '700', marginTop: 8 },
-  empty: { fontSize: 14, color: '#6b7280', fontStyle: 'italic' },
+  screen: { backgroundColor: colors.background },
+  container: { padding: spacing.lg, gap: spacing.md },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  title: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
+  headerBlock: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    gap: spacing.sm,
+    ...cardShadow,
+  },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  infoIcon: { width: 16 },
+  infoLabel: { fontSize: 13, color: colors.textSecondary, width: 50 },
+  infoValue: { fontSize: 14, color: colors.textPrimary, fontWeight: '600', flex: 1 },
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.sm },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
+  empty: { fontSize: 14, color: colors.textMuted, fontStyle: 'italic' },
   eventBlock: {
     borderLeftWidth: 3,
-    borderLeftColor: '#1d4ed8',
-    paddingLeft: 10,
+    borderLeftColor: colors.primary,
+    backgroundColor: colors.surface,
+    borderTopRightRadius: radius.sm,
+    borderBottomRightRadius: radius.sm,
+    paddingLeft: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingRight: spacing.sm,
     gap: 2,
-    marginBottom: 8,
+    ...cardShadow,
   },
-  eventTime: { fontSize: 12, color: '#6b7280' },
-  eventCategory: { fontSize: 14, fontWeight: '600', color: '#111827' },
-  eventItems: { fontSize: 13, color: '#374151' },
-  eventComment: { fontSize: 13, color: '#4b5563', fontStyle: 'italic' },
-  photoRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  eventTime: { fontSize: 12, color: colors.textSecondary },
+  eventCategory: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
+  eventItems: { fontSize: 13, color: colors.textSecondary },
+  eventComment: { fontSize: 13, color: colors.textSecondary, fontStyle: 'italic' },
+  photoRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
 });

@@ -3,8 +3,14 @@
 # dependencies
 node_modules/
 
-# separate Next.js project with its own git repo
-/web/
+# web/ deps and build output (web/ itself now folded into this repo)
+/web/node_modules/
+/web/.next/
+/web/.vercel
+/web/_verify-*.mjs
+
+# stray next.js build trace from an accidental root-level build
+/.next/
 
 # Expo
 .expo/

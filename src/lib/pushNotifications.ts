@@ -3,6 +3,12 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { supabase } from './supabase';
 
+// Referenced by the `channelId` the Postgres trigger sends in each push
+// payload (see supabase/migrations/..._mission_push_notifications.sql) --
+// the channel's own settings (not the payload) are what actually control
+// Android sound/heads-up/lock-screen behavior, so the two must stay in sync.
+export const MISSIONS_CHANNEL_ID = 'missions';
+
 // Real remote push delivery (mission proposed/accepted/refused/cancelled),
 // distinct from src/lib/localNotifications.ts's on-device scheduled alerts
 // (3h reminder, departure alert) which don't need a server round-trip at all.
@@ -26,9 +32,23 @@ export async function registerPushToken(userId: string): Promise<void> {
     if (status !== 'granted') return;
 
     if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.DEFAULT,
+      // MAX importance + PUBLIC lock-screen visibility is what makes Android
+      // show this as a heads-up banner with full content and sound even
+      // while the phone is locked -- DEFAULT importance (the previous
+      // setting) only shows silently in the notification shade.
+      await Notifications.setNotificationChannelAsync(MISSIONS_CHANNEL_ID, {
+        name: 'Missions',
+        importance: Notifications.AndroidImportance.MAX,
+        // null (not the string 'default') -- the native module treats any
+        // non-null string here as a custom sound *filename* to look up via
+        // the config plugin's `sounds` array, logging a "not found" error if
+        // it doesn't exist. null means "use the system's default sound",
+        // which is what we actually want.
+        sound: null,
+        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+        enableVibrate: true,
+        bypassDnd: false,
+        showBadge: true,
       });
     }
 

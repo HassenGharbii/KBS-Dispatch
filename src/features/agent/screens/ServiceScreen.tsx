@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet, ActivityIndicator, FlatList, Alert }
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Feather } from '@expo/vector-icons';
 import type { ServiceStackParamList } from '../../../navigation/AgentStack';
 import { useAuthStore } from '../../../store/useAuthStore';
 import {
@@ -19,6 +20,7 @@ import { OfflineBanner } from '../../../components/OfflineBanner';
 import { beginLocationFix, withTimeout } from '../../../lib/location';
 import { runSync, refreshPendingCount } from '../../../sync/syncEngine';
 import { completeMission } from '../../../lib/missionsApi';
+import { colors, spacing, radius, typography, cardShadow } from '../../../theme';
 
 type Props = NativeStackScreenProps<ServiceStackParamList, 'Service'>;
 
@@ -111,7 +113,7 @@ export default function ServiceScreen({ navigation }: Props) {
   if (shiftQuery.isLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -120,12 +122,17 @@ export default function ServiceScreen({ navigation }: Props) {
     return (
       <View style={styles.centered}>
         <OfflineBanner />
+        <View style={styles.emptyIconCircle}>
+          <Feather name="shield-off" size={30} color={colors.textMuted} />
+        </View>
         <Text style={styles.emptyTitle}>Vous n'êtes pas en service</Text>
         <Pressable style={styles.primaryButton} onPress={() => navigation.navigate('SitePicker')}>
+          <Feather name="play" size={17} color={colors.textOnPrimary} />
           <Text style={styles.primaryButtonText}>Prendre le service</Text>
         </Pressable>
-        <Pressable onPress={() => signOut()}>
-          <Text style={styles.signOutLink}>Se déconnecter</Text>
+        <Pressable style={styles.signOutLink} onPress={() => signOut()}>
+          <Feather name="log-out" size={14} color={colors.textSecondary} />
+          <Text style={styles.signOutLinkText}>Se déconnecter</Text>
         </Pressable>
       </View>
     );
@@ -136,8 +143,16 @@ export default function ServiceScreen({ navigation }: Props) {
       <OfflineBanner />
       <SyncStatusBadge />
       <View style={styles.header}>
-        <Text style={styles.siteName}>{siteQuery.data?.name ?? '…'}</Text>
-        <Text style={styles.elapsed}>En service depuis {elapsed}</Text>
+        <View style={styles.headerIconCircle}>
+          <Feather name="map-pin" size={18} color={colors.primary} />
+        </View>
+        <View style={styles.headerText}>
+          <Text style={styles.siteName}>{siteQuery.data?.name ?? '…'}</Text>
+          <View style={styles.elapsedRow}>
+            <Feather name="clock" size={13} color={colors.textSecondary} />
+            <Text style={styles.elapsed}>En service depuis {elapsed}</Text>
+          </View>
+        </View>
       </View>
       <FlatList
         data={events}
@@ -149,7 +164,12 @@ export default function ServiceScreen({ navigation }: Props) {
             onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
           />
         )}
-        ListEmptyComponent={<Text style={styles.emptyEvents}>Aucun événement pour l'instant.</Text>}
+        ListEmptyComponent={
+          <View style={styles.emptyEventsBox}>
+            <Feather name="file-text" size={26} color={colors.textMuted} />
+            <Text style={styles.emptyEvents}>Aucun événement pour l'instant.</Text>
+          </View>
+        }
         contentContainerStyle={styles.list}
       />
       <View style={styles.footer}>
@@ -157,13 +177,17 @@ export default function ServiceScreen({ navigation }: Props) {
           style={styles.primaryButton}
           onPress={() => navigation.navigate('EventEntry', { shiftId: shift.id })}
         >
-          <Text style={styles.primaryButtonText}>+ Ajouter un événement</Text>
+          <Feather name="plus" size={17} color={colors.textOnPrimary} />
+          <Text style={styles.primaryButtonText}>Ajouter un événement</Text>
         </Pressable>
         <Pressable style={styles.secondaryButton} onPress={handleEndShift} disabled={ending}>
           {ending ? (
-            <ActivityIndicator color="#dc2626" />
+            <ActivityIndicator color={colors.danger} />
           ) : (
-            <Text style={styles.secondaryButtonText}>Terminer le service</Text>
+            <>
+              <Feather name="square" size={16} color={colors.danger} />
+              <Text style={styles.secondaryButtonText}>Terminer le service</Text>
+            </>
           )}
         </Pressable>
       </View>
@@ -172,29 +196,73 @@ export default function ServiceScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 16 },
-  emptyTitle: { fontSize: 18, fontWeight: '600' },
-  signOutLink: { color: '#6b7280', fontSize: 14, marginTop: 8 },
-  header: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
-  siteName: { fontSize: 20, fontWeight: '700' },
-  elapsed: { fontSize: 14, color: '#6b7280', marginTop: 4 },
-  list: { paddingHorizontal: 16, flexGrow: 1 },
-  emptyEvents: { color: '#6b7280', fontStyle: 'italic', paddingVertical: 24, textAlign: 'center' },
-  footer: { padding: 16, gap: 10 },
+  container: { flex: 1, backgroundColor: colors.background },
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+    gap: spacing.md,
+    backgroundColor: colors.background,
+  },
+  emptyIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: radius.full,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xs,
+    ...cardShadow,
+  },
+  emptyTitle: { ...typography.heading, color: colors.textPrimary },
+  signOutLink: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.sm },
+  signOutLinkText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.lg,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerIconCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: radius.md,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerText: { flex: 1 },
+  siteName: { ...typography.heading, color: colors.textPrimary },
+  elapsedRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: 2 },
+  elapsed: { fontSize: 13, color: colors.textSecondary },
+  list: { padding: spacing.lg, flexGrow: 1 },
+  emptyEventsBox: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xxl },
+  emptyEvents: { color: colors.textMuted, fontStyle: 'italic' },
+  footer: { padding: spacing.lg, gap: spacing.sm, backgroundColor: colors.background },
   primaryButton: {
-    backgroundColor: '#1d4ed8',
-    borderRadius: 10,
-    padding: 16,
+    flexDirection: 'row',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
+    padding: spacing.lg,
     alignItems: 'center',
+    justifyContent: 'center',
+    ...cardShadow,
   },
-  primaryButtonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  primaryButtonText: { color: colors.textOnPrimary, fontWeight: '700', fontSize: 16 },
   secondaryButton: {
+    flexDirection: 'row',
+    gap: spacing.sm,
     borderWidth: 1,
-    borderColor: '#dc2626',
-    borderRadius: 10,
-    padding: 16,
+    borderColor: colors.danger,
+    borderRadius: radius.md,
+    padding: spacing.lg,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  secondaryButtonText: { color: '#dc2626', fontWeight: '700', fontSize: 16 },
+  secondaryButtonText: { color: colors.danger, fontWeight: '700', fontSize: 16 },
 });

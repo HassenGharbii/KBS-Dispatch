@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Pressable, Text, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { exportShiftReportPdf } from '../lib/exportShiftReportPdf';
 import type { ShiftReportViewProps } from './ShiftReportView';
+import { colors, spacing, radius } from '../theme';
 
 interface Props {
   report: ShiftReportViewProps;
@@ -25,9 +27,12 @@ export function PdfExportButton({ report }: Props) {
   return (
     <Pressable style={styles.button} onPress={handlePress} disabled={exporting}>
       {exporting ? (
-        <ActivityIndicator color="#1d4ed8" />
+        <ActivityIndicator color={colors.primary} />
       ) : (
-        <Text style={styles.text}>Exporter en PDF</Text>
+        <>
+          <Feather name="download" size={16} color={colors.primary} />
+          <Text style={styles.text}>Exporter en PDF</Text>
+        </>
       )}
     </Pressable>
   );
@@ -35,13 +40,17 @@ export function PdfExportButton({ report }: Props) {
 
 const styles = StyleSheet.create({
   button: {
+    flexDirection: 'row',
+    gap: spacing.sm,
     borderWidth: 1,
-    borderColor: '#1d4ed8',
-    borderRadius: 10,
+    borderColor: colors.primary,
+    borderRadius: radius.md,
     padding: 14,
     alignItems: 'center',
-    marginHorizontal: 16,
-    marginBottom: 16,
+    justifyContent: 'center',
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    backgroundColor: colors.surface,
   },
-  text: { color: '#1d4ed8', fontWeight: '700', fontSize: 15 },
+  text: { color: colors.primary, fontWeight: '700', fontSize: 15 },
 });

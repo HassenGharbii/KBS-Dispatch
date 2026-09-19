@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import type { MonthlyStats } from '../db/repositories/shiftsRepo';
+import { colors, spacing, radius, typography, cardShadow } from '../theme';
 
 interface Props {
   stats: MonthlyStats;
@@ -12,23 +14,27 @@ function formatHours(hours: number): string {
   return `${h}h${m.toString().padStart(2, '0')}`;
 }
 
+function Metric({ icon, value, label }: { icon: keyof typeof Feather.glyphMap; value: string | number; label: string }) {
+  return (
+    <View style={styles.metric}>
+      <Feather name={icon} size={15} color={colors.primary} style={styles.metricIcon} />
+      <Text style={styles.metricValue}>{value}</Text>
+      <Text style={styles.metricLabel}>{label}</Text>
+    </View>
+  );
+}
+
 export function AgentMonthlyStatsCard({ stats }: Props) {
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>Ce mois-ci</Text>
+      <View style={styles.titleRow}>
+        <Feather name="bar-chart-2" size={15} color={colors.textPrimary} />
+        <Text style={styles.title}>Ce mois-ci</Text>
+      </View>
       <View style={styles.row}>
-        <View style={styles.metric}>
-          <Text style={styles.metricValue}>{formatHours(stats.totalHours)}</Text>
-          <Text style={styles.metricLabel}>Heures</Text>
-        </View>
-        <View style={styles.metric}>
-          <Text style={styles.metricValue}>{stats.daysWorked}</Text>
-          <Text style={styles.metricLabel}>Jours</Text>
-        </View>
-        <View style={styles.metric}>
-          <Text style={styles.metricValue}>{stats.distinctSiteCount}</Text>
-          <Text style={styles.metricLabel}>Sites</Text>
-        </View>
+        <Metric icon="clock" value={formatHours(stats.totalHours)} label="Heures" />
+        <Metric icon="calendar" value={stats.daysWorked} label="Jours" />
+        <Metric icon="map-pin" value={stats.distinctSiteCount} label="Sites" />
       </View>
       {stats.bySite.length > 0 && (
         <View style={styles.siteList}>
@@ -46,18 +52,21 @@ export function AgentMonthlyStatsCard({ stats }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#f3f4f6',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    ...cardShadow,
   },
-  title: { fontSize: 15, fontWeight: '700', marginBottom: 12, color: '#111827' },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.md },
+  title: { ...typography.label, color: colors.textPrimary },
   row: { flexDirection: 'row', justifyContent: 'space-between' },
   metric: { alignItems: 'center', flex: 1 },
-  metricValue: { fontSize: 20, fontWeight: '700', color: '#1d4ed8' },
-  metricLabel: { fontSize: 12, color: '#6b7280', marginTop: 2 },
-  siteList: { marginTop: 14, borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 10, gap: 6 },
+  metricIcon: { marginBottom: spacing.xs },
+  metricValue: { fontSize: 20, fontWeight: '700', color: colors.primary },
+  metricLabel: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+  siteList: { marginTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm, gap: spacing.xs },
   siteRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  siteName: { fontSize: 13, color: '#374151' },
-  siteHours: { fontSize: 13, color: '#374151', fontWeight: '600' },
+  siteName: { fontSize: 13, color: colors.textSecondary },
+  siteHours: { fontSize: 13, color: colors.textSecondary, fontWeight: '600' },
 });

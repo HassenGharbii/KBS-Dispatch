@@ -1,10 +1,12 @@
 import React from 'react';
 import { View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { DirigeantStackParamList } from '../../../navigation/DirigeantStack';
 import { supabase } from '../../../lib/supabase';
 import type { ShiftReport } from '../../../types/domain';
+import { colors, spacing, radius, cardShadow } from '../../../theme';
 
 type Props = NativeStackScreenProps<DirigeantStackParamList, 'ReportsList'>;
 
@@ -56,13 +58,14 @@ export default function ReportsListScreen({ navigation }: Props) {
   if (reportsQuery.isLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
     <FlatList
+      style={styles.screen}
       data={reportsQuery.data ?? []}
       keyExtractor={(item) => item.shiftId}
       onRefresh={() => reportsQuery.refetch()}
@@ -72,28 +75,70 @@ export default function ReportsListScreen({ navigation }: Props) {
           style={styles.row}
           onPress={() => navigation.navigate('ReportDetail', { shiftId: item.shiftId })}
         >
-          <Text style={styles.agentName}>{item.agentName}</Text>
-          <Text style={styles.siteName}>{item.siteName}</Text>
-          <Text style={styles.meta}>
-            {formatDateTime(item.startAt)} · {item.eventCount} événement(s) · {item.photoCount}{' '}
-            photo(s)
-          </Text>
-          {item.status === 'open' && <Text style={styles.openBadge}>En cours</Text>}
+          <View style={styles.rowIconCircle}>
+            <Feather name="file-text" size={16} color={colors.primary} />
+          </View>
+          <View style={styles.rowContent}>
+            <View style={styles.rowTitleRow}>
+              <Text style={styles.agentName}>{item.agentName}</Text>
+              {item.status === 'open' && (
+                <View style={styles.openBadge}>
+                  <Text style={styles.openBadgeText}>En cours</Text>
+                </View>
+              )}
+            </View>
+            <View style={styles.siteRow}>
+              <Feather name="map-pin" size={12} color={colors.textSecondary} />
+              <Text style={styles.siteName}>{item.siteName}</Text>
+            </View>
+            <Text style={styles.meta}>
+              {formatDateTime(item.startAt)} · {item.eventCount} événement(s) · {item.photoCount} photo(s)
+            </Text>
+          </View>
+          <Feather name="chevron-right" size={18} color={colors.textMuted} />
         </Pressable>
       )}
-      ListEmptyComponent={<Text style={styles.empty}>Aucun compte rendu pour le moment.</Text>}
+      ListEmptyComponent={
+        <View style={styles.emptyBox}>
+          <Feather name="inbox" size={24} color={colors.textMuted} />
+          <Text style={styles.empty}>Aucun compte rendu pour le moment.</Text>
+        </View>
+      }
       contentContainerStyle={styles.list}
     />
   );
 }
 
 const styles = StyleSheet.create({
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  list: { padding: 16 },
-  row: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
-  agentName: { fontSize: 16, fontWeight: '700' },
-  siteName: { fontSize: 14, color: '#374151', marginTop: 2 },
-  meta: { fontSize: 12, color: '#6b7280', marginTop: 4 },
-  openBadge: { fontSize: 12, color: '#16a34a', marginTop: 4, fontWeight: '600' },
-  empty: { color: '#6b7280', fontStyle: 'italic', marginTop: 24, textAlign: 'center' },
+  screen: { backgroundColor: colors.background },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
+  list: { padding: spacing.lg },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    ...cardShadow,
+  },
+  rowIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowContent: { flex: 1 },
+  rowTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  agentName: { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
+  siteRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  siteName: { fontSize: 13, color: colors.textSecondary },
+  meta: { fontSize: 12, color: colors.textMuted, marginTop: 4 },
+  openBadge: { backgroundColor: colors.successLight, borderRadius: radius.full, paddingVertical: 2, paddingHorizontal: spacing.sm },
+  openBadgeText: { fontSize: 11, color: colors.success, fontWeight: '700' },
+  empty: { color: colors.textMuted, fontStyle: 'italic', textAlign: 'center' },
+  emptyBox: { alignItems: 'center', gap: spacing.sm, marginTop: spacing.xl },
 });

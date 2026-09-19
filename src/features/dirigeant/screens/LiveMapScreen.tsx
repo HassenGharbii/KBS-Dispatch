@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { supabase } from '../../../lib/supabase';
 import { LeafletMapView, type MapMarker } from '../../../components/LeafletMapView';
+import { colors, spacing, radius, typography, cardShadow } from '../../../theme';
 
 interface ActiveShift {
   shiftId: string;
@@ -257,7 +259,7 @@ export default function LiveMapScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -269,36 +271,70 @@ export default function LiveMapScreen() {
         data={activeList}
         keyExtractor={(item) => item.agentId}
         style={styles.list}
+        contentContainerStyle={styles.listContent}
         ListHeaderComponent={
-          <Text style={styles.listTitle}>Agents actifs ({activeList.length})</Text>
+          <View style={styles.listTitleRow}>
+            <Feather name="users" size={15} color={colors.textPrimary} />
+            <Text style={styles.listTitle}>Agents actifs ({activeList.length})</Text>
+          </View>
         }
         renderItem={({ item }) => (
           <View style={styles.row}>
-            <Text style={styles.agentName}>{item.agentName}</Text>
-            <Text style={styles.meta}>
-              {item.siteName} · en service depuis {formatTime(item.startAt)}
-            </Text>
+            <View style={styles.rowIconCircle}>
+              <Feather name="user" size={16} color={colors.primary} />
+            </View>
+            <View style={styles.rowContent}>
+              <Text style={styles.agentName}>{item.agentName}</Text>
+              <View style={styles.metaRow}>
+                <Feather name="map-pin" size={12} color={colors.textSecondary} />
+                <Text style={styles.meta}>
+                  {item.siteName} · depuis {formatTime(item.startAt)}
+                </Text>
+              </View>
+            </View>
           </View>
         )}
-        ListEmptyComponent={<Text style={styles.empty}>Aucun agent en service actuellement.</Text>}
+        ListEmptyComponent={
+          <View style={styles.emptyBox}>
+            <Feather name="user-x" size={22} color={colors.textMuted} />
+            <Text style={styles.empty}>Aucun agent en service actuellement.</Text>
+          </View>
+        }
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  container: { flex: 1, backgroundColor: colors.background },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
   map: { height: '45%' },
   list: { flex: 1 },
-  listTitle: { fontSize: 15, fontWeight: '700', padding: 16, paddingBottom: 8 },
+  listContent: { padding: spacing.lg },
+  listTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.sm },
+  listTitle: { ...typography.label, color: colors.textPrimary },
   row: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    ...cardShadow,
   },
-  agentName: { fontSize: 15, fontWeight: '600', color: '#111827' },
-  meta: { fontSize: 13, color: '#6b7280', marginTop: 2 },
-  empty: { color: '#6b7280', fontStyle: 'italic', textAlign: 'center', marginTop: 24 },
+  rowIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.full,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowContent: { flex: 1 },
+  agentName: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  meta: { fontSize: 13, color: colors.textSecondary },
+  empty: { color: colors.textMuted, fontStyle: 'italic', textAlign: 'center' },
+  emptyBox: { alignItems: 'center', gap: spacing.sm, marginTop: spacing.xl },
 });

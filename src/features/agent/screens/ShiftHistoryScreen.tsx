@@ -3,11 +3,13 @@ import { View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator } from '
 import { useQuery } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
+import { Feather } from '@expo/vector-icons';
 import type { HistoryStackParamList } from '../../../navigation/AgentStack';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { listShiftsForAgent, getMonthlyStatsForAgent } from '../../../db/repositories/shiftsRepo';
 import { getSiteById } from '../../../db/repositories/sitesRepo';
 import { AgentMonthlyStatsCard } from '../../../components/AgentMonthlyStatsCard';
+import { colors, spacing, radius, typography, cardShadow } from '../../../theme';
 
 type Props = NativeStackScreenProps<HistoryStackParamList, 'ShiftHistory'>;
 
@@ -30,9 +32,20 @@ function ShiftRow({ siteId, startAt, syncStatus, onPress }: ShiftRowProps) {
   const siteQuery = useQuery({ queryKey: ['site', siteId], queryFn: () => getSiteById(siteId) });
   return (
     <Pressable style={styles.row} onPress={onPress}>
-      <Text style={styles.date}>{formatDate(startAt)}</Text>
-      <Text style={styles.site}>{siteQuery.data?.name ?? '…'}</Text>
-      {syncStatus !== 'synced' && <Text style={styles.pending}>Non synchronisé</Text>}
+      <View style={styles.rowIconCircle}>
+        <Feather name="check" size={15} color={colors.success} />
+      </View>
+      <View style={styles.rowContent}>
+        <Text style={styles.site}>{siteQuery.data?.name ?? '…'}</Text>
+        <Text style={styles.date}>{formatDate(startAt)}</Text>
+        {syncStatus !== 'synced' && (
+          <View style={styles.pendingRow}>
+            <Feather name="clock" size={11} color={colors.warning} />
+            <Text style={styles.pending}>Non synchronisé</Text>
+          </View>
+        )}
+      </View>
+      <Feather name="chevron-right" size={18} color={colors.textMuted} />
     </Pressable>
   );
 }
@@ -69,13 +82,14 @@ export default function ShiftHistoryScreen({ navigation }: Props) {
   if (shiftsQuery.isLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
     <FlatList
+      style={styles.container}
       data={shifts}
       keyExtractor={(item) => item.id}
       renderItem={({ item }) => (
@@ -89,33 +103,88 @@ export default function ShiftHistoryScreen({ navigation }: Props) {
       ListHeaderComponent={
         <>
           {statsQuery.data ? <AgentMonthlyStatsCard stats={statsQuery.data} /> : null}
-          <Pressable style={styles.homeAddressRow} onPress={() => navigation.navigate('HomeAddress')}>
-            <Text style={styles.homeAddressLabel}>Mon adresse de domicile</Text>
-            <Text style={styles.homeAddressValue}>{profile?.homeAddress ?? 'Non renseignée'}</Text>
+          <Pressable style={styles.linkRow} onPress={() => navigation.navigate('HomeAddress')}>
+            <View style={styles.linkIconCircle}>
+              <Feather name="home" size={16} color={colors.primary} />
+            </View>
+            <View style={styles.linkContent}>
+              <Text style={styles.linkLabel}>Mon adresse de domicile</Text>
+              <Text style={styles.linkValue}>{profile?.homeAddress ?? 'Non renseignée'}</Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={colors.textMuted} />
           </Pressable>
+          <Pressable style={styles.linkRow} onPress={() => navigation.navigate('Unavailability')}>
+            <View style={styles.linkIconCircle}>
+              <Feather name="calendar" size={16} color={colors.primary} />
+            </View>
+            <View style={styles.linkContent}>
+              <Text style={styles.linkLabel}>Mes indisponibilités</Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={colors.textMuted} />
+          </Pressable>
+          {shifts.length > 0 && <Text style={styles.sectionTitle}>Historique</Text>}
         </>
       }
-      ListEmptyComponent={<Text style={styles.empty}>Aucun service terminé.</Text>}
+      ListEmptyComponent={
+        <View style={styles.emptyBox}>
+          <Feather name="archive" size={26} color={colors.textMuted} />
+          <Text style={styles.empty}>Aucun service terminé.</Text>
+        </View>
+      }
       contentContainerStyle={styles.list}
     />
   );
 }
 
 const styles = StyleSheet.create({
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  list: { padding: 16 },
-  row: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
-  date: { fontSize: 13, color: '#6b7280' },
-  site: { fontSize: 16, fontWeight: '600', marginTop: 2 },
-  pending: { fontSize: 11, color: '#b45309', marginTop: 2 },
-  empty: { color: '#6b7280', fontStyle: 'italic', marginTop: 24, textAlign: 'center' },
-  homeAddressRow: {
-    paddingVertical: 14,
-    paddingHorizontal: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    marginBottom: 4,
+  container: { backgroundColor: colors.background },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
+  list: { padding: spacing.lg },
+  sectionTitle: { ...typography.label, color: colors.textSecondary, marginBottom: spacing.sm },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    ...cardShadow,
   },
-  homeAddressLabel: { fontSize: 14, fontWeight: '600', color: '#1d4ed8' },
-  homeAddressValue: { fontSize: 13, color: '#6b7280', marginTop: 2 },
+  rowIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.full,
+    backgroundColor: colors.successLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowContent: { flex: 1 },
+  date: { fontSize: 12, color: colors.textSecondary, marginTop: 1 },
+  site: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
+  pendingRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
+  pending: { fontSize: 11, color: colors.warning, fontWeight: '600' },
+  empty: { color: colors.textMuted, fontStyle: 'italic', textAlign: 'center' },
+  emptyBox: { alignItems: 'center', gap: spacing.sm, marginTop: spacing.xl },
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    ...cardShadow,
+  },
+  linkIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  linkContent: { flex: 1 },
+  linkLabel: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
+  linkValue: { fontSize: 13, color: colors.textSecondary, marginTop: 1 },
 });

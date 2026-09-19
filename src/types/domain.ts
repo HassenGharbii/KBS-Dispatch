@@ -43,7 +43,8 @@ export type MissionStatus =
 export interface Mission {
   id: string;
   siteId: string;
-  agentId: string;
+  // null only while a broadcast mission is unclaimed -- see isBroadcast.
+  agentId: string | null;
   createdBy: string;
   scheduledStart: string;
   scheduledEnd: string | null;
@@ -53,6 +54,29 @@ export interface Mission {
   currentLat: number | null;
   currentLng: number | null;
   currentLocationAt: string | null;
+  createdAt: string;
+  isBroadcast: boolean;
+}
+
+export type MissionSwapStatus = 'requested' | 'accepted' | 'refused' | 'cancelled';
+
+export interface MissionSwapRequest {
+  id: string;
+  missionId: string;
+  fromAgentId: string;
+  toAgentId: string;
+  status: MissionSwapStatus;
+  message: string | null;
+  respondedAt: string | null;
+  createdAt: string;
+}
+
+export interface AgentUnavailability {
+  id: string;
+  agentId: string;
+  startAt: string;
+  endAt: string;
+  reason: string | null;
   createdAt: string;
 }
 

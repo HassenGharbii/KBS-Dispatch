@@ -13,11 +13,14 @@ import {
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MissionsStackParamList } from '../../../navigation/DirigeantStack';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { listActiveSites } from '../../../db/repositories/sitesRepo';
 import { listAgents, createMission } from '../../../lib/missionsApi';
+import { AgentPickerWithBroadcast } from '../../../components/AgentPickerWithBroadcast';
+import { colors, spacing, radius, typography, cardShadow } from '../../../theme';
 
 type Props = NativeStackScreenProps<MissionsStackParamList, 'MissionCreate'>;
 
@@ -45,6 +48,7 @@ export default function MissionCreateScreen({ navigation }: Props) {
 
   const [siteId, setSiteId] = useState<string | null>(null);
   const [agentId, setAgentId] = useState<string | null>(null);
+  const [isBroadcast, setIsBroadcast] = useState(false);
   const [scheduledStart, setScheduledStart] = useState(defaultScheduledStart);
   // Android's native picker only supports a single mode per dialog, so
   // creating a mission walks date -> time as two separate dialogs; iOS's
@@ -54,7 +58,7 @@ export default function MissionCreateScreen({ navigation }: Props) {
   const [instructions, setInstructions] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const canSubmit = Boolean(siteId && agentId && profile);
+  const canSubmit = Boolean(siteId && profile && (isBroadcast || agentId));
 
   function handlePickerChange(event: { type: string }, selected?: Date) {
     // Android dismisses immediately after either a tap on a value or Cancel;
@@ -81,15 +85,16 @@ export default function MissionCreateScreen({ navigation }: Props) {
   }
 
   async function handleCreate() {
-    if (!siteId || !agentId || !profile) return;
+    if (!siteId || !profile || (!isBroadcast && !agentId)) return;
     setSaving(true);
     try {
       const { error } = await createMission({
         siteId,
-        agentId,
+        agentId: isBroadcast ? null : agentId,
         createdBy: profile.id,
         scheduledStart: scheduledStart.toISOString(),
         instructions: instructions.trim() || null,
+        isBroadcast,
       });
       if (error) {
         Alert.alert('Erreur', error);
@@ -103,48 +108,54 @@ export default function MissionCreateScreen({ navigation }: Props) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.label}>Site</Text>
+      <View style={styles.labelRow}>
+        <Feather name="map-pin" size={14} color={colors.textSecondary} />
+        <Text style={styles.label}>Site</Text>
+      </View>
       {sitesQuery.isLoading ? (
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.primary} />
       ) : (
         <FlatList
           data={sitesQuery.data ?? []}
           keyExtractor={(item) => item.id}
           scrollEnabled={false}
-          renderItem={({ item }) => (
-            <Pressable
-              style={[styles.optionRow, siteId === item.id && styles.optionRowSelected]}
-              onPress={() => setSiteId(item.id)}
-            >
-              <Text style={styles.optionText}>{item.name}</Text>
-              <Text style={styles.optionSubtext}>{item.address}</Text>
-            </Pressable>
-          )}
+          renderItem={({ item }) => {
+            const selected = siteId === item.id;
+            return (
+              <Pressable
+                style={[styles.optionRow, selected && styles.optionRowSelected]}
+                onPress={() => setSiteId(item.id)}
+              >
+                <View style={styles.optionContent}>
+                  <Text style={styles.optionText}>{item.name}</Text>
+                  <Text style={styles.optionSubtext}>{item.address}</Text>
+                </View>
+                {selected && <Feather name="check-circle" size={17} color={colors.primary} />}
+              </Pressable>
+            );
+          }}
         />
       )}
 
-      <Text style={styles.label}>Agent</Text>
-      {agentsQuery.isLoading ? (
-        <ActivityIndicator />
-      ) : (
-        <FlatList
-          data={agentsQuery.data ?? []}
-          keyExtractor={(item) => item.id}
-          scrollEnabled={false}
-          renderItem={({ item }) => (
-            <Pressable
-              style={[styles.optionRow, agentId === item.id && styles.optionRowSelected]}
-              onPress={() => setAgentId(item.id)}
-            >
-              <Text style={styles.optionText}>{item.fullName}</Text>
-            </Pressable>
-          )}
-          ListEmptyComponent={<Text style={styles.empty}>Aucun agent trouvé.</Text>}
-        />
-      )}
+      <View style={styles.labelRow}>
+        <Feather name="users" size={14} color={colors.textSecondary} />
+        <Text style={styles.label}>Agent</Text>
+      </View>
+      <AgentPickerWithBroadcast
+        agents={agentsQuery.data ?? []}
+        loading={agentsQuery.isLoading}
+        agentId={agentId}
+        onAgentIdChange={setAgentId}
+        isBroadcast={isBroadcast}
+        onIsBroadcastChange={setIsBroadcast}
+      />
 
-      <Text style={styles.label}>Date et heure de prise de service</Text>
+      <View style={styles.labelRow}>
+        <Feather name="clock" size={14} color={colors.textSecondary} />
+        <Text style={styles.label}>Date et heure de prise de service</Text>
+      </View>
       <Pressable style={styles.dateButton} onPress={() => setPickerStep('date')}>
+        <Feather name="calendar" size={16} color={colors.textSecondary} />
         <Text style={styles.dateButtonText}>{formatScheduledStart(scheduledStart)}</Text>
       </Pressable>
       {pickerStep && (
@@ -162,67 +173,94 @@ export default function MissionCreateScreen({ navigation }: Props) {
         </Pressable>
       )}
 
-      <Text style={styles.label}>Consignes particulières</Text>
+      <View style={styles.labelRow}>
+        <Feather name="file-text" size={14} color={colors.textSecondary} />
+        <Text style={styles.label}>Consignes particulières</Text>
+      </View>
       <TextInput
         style={[styles.input, styles.multiline]}
         placeholder="Consignes pour l'agent…"
+        placeholderTextColor={colors.textMuted}
         value={instructions}
         onChangeText={setInstructions}
         multiline
       />
 
       <Pressable style={styles.button} onPress={handleCreate} disabled={!canSubmit || saving}>
-        {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Créer la mission</Text>}
+        {saving ? (
+          <ActivityIndicator color={colors.textOnPrimary} />
+        ) : (
+          <>
+            <Feather name="check" size={17} color={colors.textOnPrimary} />
+            <Text style={styles.buttonText}>Créer la mission</Text>
+          </>
+        )}
       </Pressable>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  content: { padding: 16, paddingBottom: 40 },
-  label: { fontSize: 14, fontWeight: '600', marginTop: 16, marginBottom: 8 },
+  container: { flex: 1, backgroundColor: colors.background },
+  content: { padding: spacing.lg, paddingBottom: 40 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.lg, marginBottom: spacing.sm },
+  label: { ...typography.label, color: colors.textSecondary },
   input: {
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 12,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.md,
     fontSize: 16,
+    color: colors.textPrimary,
   },
   multiline: { minHeight: 80, textAlignVertical: 'top' },
   dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 12,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.md,
   },
-  dateButtonText: { fontSize: 16 },
+  dateButtonText: { fontSize: 16, color: colors.textPrimary },
   doneButton: {
-    backgroundColor: '#1d4ed8',
-    borderRadius: 8,
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
     paddingVertical: 10,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: spacing.sm,
   },
-  doneButtonText: { color: '#fff', fontWeight: '600' },
+  doneButtonText: { color: colors.textOnPrimary, fontWeight: '600' },
   optionRow: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.md,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 8,
-    marginBottom: 8,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    marginBottom: spacing.sm,
+    ...cardShadow,
   },
-  optionRowSelected: { borderColor: '#1d4ed8', backgroundColor: '#eff6ff' },
-  optionText: { fontSize: 15, fontWeight: '600' },
-  optionSubtext: { fontSize: 12, color: '#6b7280', marginTop: 2 },
-  empty: { color: '#6b7280', fontStyle: 'italic' },
+  optionRowSelected: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+  optionContent: { flex: 1 },
+  optionText: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
+  optionSubtext: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+  empty: { color: colors.textMuted, fontStyle: 'italic' },
   button: {
-    backgroundColor: '#1d4ed8',
-    borderRadius: 8,
+    flexDirection: 'row',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
     paddingVertical: 14,
     alignItems: 'center',
-    marginTop: 24,
+    justifyContent: 'center',
+    marginTop: spacing.xl,
+    ...cardShadow,
   },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  buttonText: { color: colors.textOnPrimary, fontSize: 16, fontWeight: '600' },
 });

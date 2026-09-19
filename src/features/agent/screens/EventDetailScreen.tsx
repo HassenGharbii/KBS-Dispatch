@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Feather } from '@expo/vector-icons';
 import type { ServiceStackParamList } from '../../../navigation/AgentStack';
 import { CategoryGrid } from '../../../components/CategoryGrid';
 import { ItemChecklist } from '../../../components/ItemChecklist';
@@ -15,6 +16,7 @@ import {
 } from '../../../db/repositories/eventsRepo';
 import { listPhotosForEvent } from '../../../db/repositories/photosRepo';
 import { runSync, refreshPendingCount } from '../../../sync/syncEngine';
+import { colors, spacing, radius, typography, cardShadow } from '../../../theme';
 
 type Props = NativeStackScreenProps<ServiceStackParamList, 'EventDetail'>;
 
@@ -43,7 +45,7 @@ export default function EventDetailScreen({ route, navigation }: Props) {
   if (!event) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.primary} />
       </View>
     );
   }
@@ -116,17 +118,19 @@ export default function EventDetailScreen({ route, navigation }: Props) {
 
   if (editing) {
     return (
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
         <Text style={styles.sectionTitle}>Catégorie</Text>
         <CategoryGrid selectedCategoryCode={editCategory?.code ?? null} onSelect={setEditCategory} />
         {editCategory && (
           <>
             <Text style={styles.sectionTitle}>{editCategory.label}</Text>
-            <ItemChecklist
-              items={editCategory.items}
-              selectedItemCodes={editItemCodes}
-              onToggle={toggleEditItem}
-            />
+            <View style={styles.card}>
+              <ItemChecklist
+                items={editCategory.items}
+                selectedItemCodes={editItemCodes}
+                onToggle={toggleEditItem}
+              />
+            </View>
           </>
         )}
         <Text style={styles.sectionTitle}>Commentaire</Text>
@@ -138,6 +142,7 @@ export default function EventDetailScreen({ route, navigation }: Props) {
         />
         <View style={styles.row}>
           <Pressable style={styles.secondaryButton} onPress={() => setEditing(false)}>
+            <Feather name="x" size={16} color={colors.primary} />
             <Text style={styles.secondaryButtonText}>Annuler</Text>
           </Pressable>
           <Pressable
@@ -145,7 +150,14 @@ export default function EventDetailScreen({ route, navigation }: Props) {
             onPress={handleSaveEdit}
             disabled={saving || editItemCodes.length === 0}
           >
-            {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Enregistrer</Text>}
+            {saving ? (
+              <ActivityIndicator color={colors.textOnPrimary} />
+            ) : (
+              <>
+                <Feather name="save" size={16} color={colors.textOnPrimary} />
+                <Text style={styles.primaryButtonText}>Enregistrer</Text>
+              </>
+            )}
           </Pressable>
         </View>
       </ScrollView>
@@ -157,36 +169,55 @@ export default function EventDetailScreen({ route, navigation }: Props) {
     .join(', ');
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.time}>{formatDateTime(event.occurredAt)}</Text>
-      <Text style={styles.category}>{category?.label ?? event.categoryCode}</Text>
-      <Text style={styles.items}>{itemLabels}</Text>
-      {event.comment ? <Text style={styles.comment}>{event.comment}</Text> : null}
-
-      {(photosQuery.data ?? []).length > 0 && (
-        <View style={styles.photoRow}>
-          {(photosQuery.data ?? []).map((photo) =>
-            photo.localUri ? (
-              <PhotoThumbnail
-                key={photo.id}
-                uri={photo.localUri}
-                onPress={() => setViewerUri(photo.localUri)}
-              />
-            ) : null
-          )}
+    <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
+      <View style={styles.card}>
+        <View style={styles.timeRow}>
+          <Feather name="clock" size={13} color={colors.textSecondary} />
+          <Text style={styles.time}>{formatDateTime(event.occurredAt)}</Text>
         </View>
-      )}
+        <Text style={styles.category}>{category?.label ?? event.categoryCode}</Text>
+        <Text style={styles.items}>{itemLabels}</Text>
+        {event.comment ? <Text style={styles.comment}>{event.comment}</Text> : null}
 
-      <Text style={styles.syncStatus}>
-        {event.syncStatus === 'synced' ? 'Synchronisé' : 'En attente de synchronisation'}
-      </Text>
+        {(photosQuery.data ?? []).length > 0 && (
+          <View style={styles.photoRow}>
+            {(photosQuery.data ?? []).map((photo) =>
+              photo.localUri ? (
+                <PhotoThumbnail
+                  key={photo.id}
+                  uri={photo.localUri}
+                  onPress={() => setViewerUri(photo.localUri)}
+                />
+              ) : null
+            )}
+          </View>
+        )}
+
+        <View style={styles.syncStatusRow}>
+          <Feather
+            name={event.syncStatus === 'synced' ? 'check-circle' : 'clock'}
+            size={12}
+            color={event.syncStatus === 'synced' ? colors.success : colors.warning}
+          />
+          <Text
+            style={[
+              styles.syncStatus,
+              { color: event.syncStatus === 'synced' ? colors.success : colors.warning },
+            ]}
+          >
+            {event.syncStatus === 'synced' ? 'Synchronisé' : 'En attente de synchronisation'}
+          </Text>
+        </View>
+      </View>
 
       {editable && (
         <View style={styles.row}>
           <Pressable style={styles.secondaryButton} onPress={startEditing}>
+            <Feather name="edit-2" size={15} color={colors.primary} />
             <Text style={styles.secondaryButtonText}>Modifier</Text>
           </Pressable>
           <Pressable style={styles.deleteButton} onPress={handleDelete}>
+            <Feather name="trash-2" size={15} color={colors.danger} />
             <Text style={styles.deleteButtonText}>Supprimer</Text>
           </Pressable>
         </View>
@@ -198,49 +229,70 @@ export default function EventDetailScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16, gap: 8 },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  time: { fontSize: 13, color: '#6b7280' },
-  category: { fontSize: 18, fontWeight: '700', color: '#111827' },
-  items: { fontSize: 15, color: '#374151' },
-  comment: { fontSize: 14, color: '#4b5563', fontStyle: 'italic' },
-  photoRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
-  syncStatus: { fontSize: 12, color: '#6b7280', marginTop: 8 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', marginTop: 8 },
+  screen: { backgroundColor: colors.background },
+  container: { padding: spacing.lg, gap: spacing.md },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.lg,
+    gap: spacing.xs,
+    ...cardShadow,
+  },
+  timeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  time: { fontSize: 13, color: colors.textSecondary },
+  category: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
+  items: { fontSize: 15, color: colors.textSecondary },
+  comment: { fontSize: 14, color: colors.textSecondary, fontStyle: 'italic' },
+  photoRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
+  syncStatusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.xs },
+  syncStatus: { fontSize: 12, fontWeight: '600' },
+  sectionTitle: { ...typography.label, color: colors.textSecondary, marginTop: spacing.sm },
   commentInput: {
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 12,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.md,
     minHeight: 80,
     textAlignVertical: 'top',
     fontSize: 15,
+    color: colors.textPrimary,
   },
-  row: { flexDirection: 'row', gap: 12, marginTop: 16 },
+  row: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm },
   primaryButton: {
     flex: 1,
-    backgroundColor: '#1d4ed8',
-    borderRadius: 10,
-    padding: 14,
+    flexDirection: 'row',
+    gap: spacing.xs,
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
+    padding: spacing.md,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  primaryButtonText: { color: '#fff', fontWeight: '700' },
+  primaryButtonText: { color: colors.textOnPrimary, fontWeight: '700' },
   secondaryButton: {
     flex: 1,
+    flexDirection: 'row',
+    gap: spacing.xs,
     borderWidth: 1,
-    borderColor: '#1d4ed8',
-    borderRadius: 10,
-    padding: 14,
+    borderColor: colors.primary,
+    borderRadius: radius.md,
+    padding: spacing.md,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  secondaryButtonText: { color: '#1d4ed8', fontWeight: '700' },
+  secondaryButtonText: { color: colors.primary, fontWeight: '700' },
   deleteButton: {
     flex: 1,
+    flexDirection: 'row',
+    gap: spacing.xs,
     borderWidth: 1,
-    borderColor: '#dc2626',
-    borderRadius: 10,
-    padding: 14,
+    borderColor: colors.danger,
+    borderRadius: radius.md,
+    padding: spacing.md,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  deleteButtonText: { color: '#dc2626', fontWeight: '700' },
+  deleteButtonText: { color: colors.danger, fontWeight: '700' },
 });

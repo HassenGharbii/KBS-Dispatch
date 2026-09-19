@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { HistoryStackParamList } from '../../../navigation/AgentStack';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { geocodeAddress } from '../../../lib/routing';
+import { colors, spacing, radius, cardShadow } from '../../../theme';
 
 type Props = NativeStackScreenProps<HistoryStackParamList, 'HomeAddress'>;
 
@@ -41,41 +43,76 @@ export default function HomeAddressScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Adresse de domicile</Text>
-      <Text style={styles.hint}>
-        Utilisée pour calculer l'heure de départ avant vos missions.
-      </Text>
-      <TextInput
-        style={styles.input}
-        placeholder="12 rue Exemple, 69000 Lyon"
-        value={address}
-        onChangeText={setAddress}
-        autoFocus
-      />
-      <Pressable style={styles.button} onPress={handleSave} disabled={saving || !address.trim()}>
-        {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Enregistrer</Text>}
-      </Pressable>
+      <View style={styles.card}>
+        <View style={styles.iconCircle}>
+          <Feather name="home" size={20} color={colors.primary} />
+        </View>
+        <Text style={styles.label}>Adresse de domicile</Text>
+        <Text style={styles.hint}>Utilisée pour calculer l'heure de départ avant vos missions.</Text>
+        <View style={styles.inputWrapper}>
+          <Feather name="map-pin" size={16} color={colors.textMuted} style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="12 rue Exemple, 69000 Lyon"
+            placeholderTextColor={colors.textMuted}
+            value={address}
+            onChangeText={setAddress}
+            autoFocus
+          />
+        </View>
+        <Pressable style={styles.button} onPress={handleSave} disabled={saving || !address.trim()}>
+          {saving ? (
+            <ActivityIndicator color={colors.textOnPrimary} />
+          ) : (
+            <>
+              <Feather name="save" size={16} color={colors.textOnPrimary} />
+              <Text style={styles.buttonText}>Enregistrer</Text>
+            </>
+          )}
+        </Pressable>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  label: { fontSize: 16, fontWeight: '600' },
-  hint: { fontSize: 13, color: '#6b7280', marginTop: 4, marginBottom: 16 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
+  container: { flex: 1, padding: spacing.lg, backgroundColor: colors.background },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    ...cardShadow,
   },
+  iconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  label: { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
+  hint: { fontSize: 13, color: colors.textSecondary, marginTop: spacing.xs, marginBottom: spacing.lg },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+  },
+  inputIcon: { marginRight: spacing.sm },
+  input: { flex: 1, paddingVertical: 13, fontSize: 16, color: colors.textPrimary },
   button: {
-    backgroundColor: '#1d4ed8',
-    borderRadius: 8,
+    flexDirection: 'row',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
     paddingVertical: 14,
     alignItems: 'center',
-    marginTop: 16,
+    justifyContent: 'center',
+    marginTop: spacing.lg,
   },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  buttonText: { color: colors.textOnPrimary, fontSize: 16, fontWeight: '600' },
 });

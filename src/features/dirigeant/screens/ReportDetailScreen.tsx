@@ -8,6 +8,7 @@ import { PhotoFullScreenViewer } from '../../../components/PhotoFullScreenViewer
 import { PdfExportButton } from '../../../components/PdfExportButton';
 import { supabase } from '../../../lib/supabase';
 import type { CategoryCode } from '../../../constants/referenceList';
+import { colors } from '../../../theme';
 
 type Props = NativeStackScreenProps<DirigeantStackParamList, 'ReportDetail'>;
 
@@ -104,7 +105,7 @@ export default function ReportDetailScreen({ route }: Props) {
   if (detailQuery.isLoading || !detailQuery.data) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -127,5 +128,5 @@ export default function ReportDetailScreen({ route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
 });

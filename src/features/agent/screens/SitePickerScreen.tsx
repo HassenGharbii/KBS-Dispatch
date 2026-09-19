@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, FlatList, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Feather } from '@expo/vector-icons';
 import type { ServiceStackParamList } from '../../../navigation/AgentStack';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { listActiveSites } from '../../../db/repositories/sitesRepo';
 import { startShift, backfillShiftStartLocation } from '../../../db/repositories/shiftsRepo';
 import { beginLocationFix, withTimeout } from '../../../lib/location';
 import { runSync, refreshPendingCount } from '../../../sync/syncEngine';
+import { colors, spacing, radius, cardShadow } from '../../../theme';
 
 type Props = NativeStackScreenProps<ServiceStackParamList, 'SitePicker'>;
 
@@ -60,14 +62,18 @@ export default function SitePickerScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <TextInput
-        style={styles.search}
-        placeholder="Rechercher un site…"
-        value={search}
-        onChangeText={setSearch}
-      />
+      <View style={styles.searchWrapper}>
+        <Feather name="search" size={16} color={colors.textMuted} style={styles.searchIcon} />
+        <TextInput
+          style={styles.search}
+          placeholder="Rechercher un site…"
+          placeholderTextColor={colors.textMuted}
+          value={search}
+          onChangeText={setSearch}
+        />
+      </View>
       {sitesQuery.isLoading ? (
-        <ActivityIndicator style={{ marginTop: 24 }} />
+        <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />
       ) : (
         <FlatList
           data={sites}
@@ -78,12 +84,27 @@ export default function SitePickerScreen({ navigation }: Props) {
               onPress={() => handlePick(item.id)}
               disabled={startingSiteId !== null}
             >
-              <Text style={styles.siteName}>{item.name}</Text>
-              <Text style={styles.siteAddress}>{item.address}</Text>
-              {startingSiteId === item.id && <ActivityIndicator style={{ marginTop: 8 }} />}
+              <View style={styles.rowIconCircle}>
+                <Feather name="map-pin" size={16} color={colors.primary} />
+              </View>
+              <View style={styles.rowContent}>
+                <Text style={styles.siteName}>{item.name}</Text>
+                <Text style={styles.siteAddress}>{item.address}</Text>
+              </View>
+              {startingSiteId === item.id ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <Feather name="chevron-right" size={18} color={colors.textMuted} />
+              )}
             </Pressable>
           )}
-          ListEmptyComponent={<Text style={styles.empty}>Aucun site trouvé.</Text>}
+          ListEmptyComponent={
+            <View style={styles.emptyBox}>
+              <Feather name="map" size={24} color={colors.textMuted} />
+              <Text style={styles.empty}>Aucun site trouvé.</Text>
+            </View>
+          }
+          contentContainerStyle={styles.list}
         />
       )}
     </View>
@@ -91,17 +112,41 @@ export default function SitePickerScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  search: {
+  container: { flex: 1, padding: spacing.lg, backgroundColor: colors.background },
+  searchWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 12,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
   },
-  row: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
-  siteName: { fontSize: 16, fontWeight: '600' },
-  siteAddress: { fontSize: 13, color: '#6b7280', marginTop: 2 },
-  empty: { color: '#6b7280', fontStyle: 'italic', marginTop: 24, textAlign: 'center' },
+  searchIcon: { marginRight: spacing.sm },
+  search: { flex: 1, paddingVertical: 12, fontSize: 16, color: colors.textPrimary },
+  list: { gap: spacing.sm },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    ...cardShadow,
+  },
+  rowIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowContent: { flex: 1 },
+  siteName: { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
+  siteAddress: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+  empty: { color: colors.textMuted, fontStyle: 'italic', textAlign: 'center' },
+  emptyBox: { alignItems: 'center', gap: spacing.sm, marginTop: spacing.xl },
 });
