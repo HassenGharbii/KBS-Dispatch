@@ -232,7 +232,7 @@ export function LiveMap({
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[1fr_300px]">
+      <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[60vh_auto] gap-3 lg:grid-cols-[1fr_300px] lg:grid-rows-1">
         <div className="min-h-0 overflow-hidden rounded-xl border border-slate-800">
           <LeafletMap markers={markers} siteMarkers={siteMarkers} tileStyle={tileStyle} flyTo={flyTo} />
         </div>

@@ -56,13 +56,15 @@ export function OrgSidebar({
     <>
       {open && (
         <div
-          className="fixed inset-0 z-30 bg-black/60 md:hidden"
+          // Above Leaflet's own z-[1000] controls/legend (see leaflet-map.tsx)
+          // so the drawer never appears to render "under" the live map.
+          className="fixed inset-0 z-[1100] bg-black/60 md:hidden"
           onClick={onClose}
           aria-hidden="true"
         />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 -translate-x-full flex-col border-r border-slate-800 bg-slate-900 transition-transform duration-200 md:static md:z-0 md:w-48 md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-[1101] flex w-64 shrink-0 -translate-x-full flex-col border-r border-slate-800 bg-slate-900 transition-transform duration-200 md:static md:z-0 md:w-48 md:translate-x-0 ${
           open ? "translate-x-0" : ""
         }`}
       >
