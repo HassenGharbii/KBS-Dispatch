@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { OrgHeader } from "@/components/org-header";
-import { OrgSidebar } from "@/components/org-sidebar";
+import { OrgShell } from "@/components/org-shell";
 
 export default async function OrgLayout({ children }: { children: React.ReactNode }) {
   const profile = await getCurrentProfile();
@@ -16,26 +15,14 @@ export default async function OrgLayout({ children }: { children: React.ReactNod
   ]);
 
   return (
-    <div className="flex h-screen flex-col bg-slate-950 print:h-auto print:bg-white">
-      <div className="no-print">
-        <OrgHeader
-          fullName={profile.fullName}
-          role={profile.role}
-          pendingMissionsCount={pendingMissionsCount ?? 0}
-        />
-      </div>
-      <div className="flex min-h-0 flex-1 print:block">
-        <div className="no-print">
-          <OrgSidebar
-            showSubAdmins={profile.role === "dirigeant"}
-            pendingMissionsCount={pendingMissionsCount ?? 0}
-            reportsCount={reportsCount ?? 0}
-          />
-        </div>
-        <main className="min-w-0 flex-1 overflow-y-auto p-4 print:overflow-visible print:p-0">
-          {children}
-        </main>
-      </div>
-    </div>
+    <OrgShell
+      fullName={profile.fullName}
+      role={profile.role}
+      pendingMissionsCount={pendingMissionsCount ?? 0}
+      reportsCount={reportsCount ?? 0}
+      showSubAdmins={profile.role === "dirigeant"}
+    >
+      {children}
+    </OrgShell>
   );
 }

@@ -37,7 +37,7 @@ export function OrgUserMenu({ fullName, role }: { fullName: string; role: string
         className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-200 hover:bg-slate-800"
       >
         <UserCircle size={22} className="text-slate-400" />
-        <span className="font-medium">{fullName}</span>
+        <span className="hidden font-medium sm:inline">{fullName}</span>
         <ChevronDown size={16} className="text-slate-500" />
       </button>
       {open && (

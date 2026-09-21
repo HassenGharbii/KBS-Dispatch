@@ -26,10 +26,14 @@ export function OrgSidebar({
   showSubAdmins,
   pendingMissionsCount,
   reportsCount,
+  open,
+  onClose,
 }: {
   showSubAdmins: boolean;
   pendingMissionsCount: number;
   reportsCount: number;
+  open: boolean;
+  onClose: () => void;
 }) {
   const pathname = usePathname();
 
@@ -49,36 +53,50 @@ export function OrgSidebar({
   }
 
   return (
-    <aside className="flex w-48 shrink-0 flex-col border-r border-slate-800 bg-slate-900">
-      <nav className="flex-1 space-y-0.5 p-2">
-        {items.map((item) => {
-          const active = pathname === item.href || pathname?.startsWith(item.href + "/");
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors ${
-                active
-                  ? "bg-blue-600 text-white shadow-sm shadow-blue-900/50"
-                  : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"
-              }`}
-            >
-              <Icon size={17} className={active ? "text-white" : "text-slate-500"} />
-              <span className="flex-1 truncate">{item.label}</span>
-              {!!item.badge && item.badge > 0 && (
-                <span
-                  className={`rounded-full px-1.5 py-0.5 text-[11px] font-semibold ${
-                    active ? "bg-blue-800 text-blue-100" : "bg-red-500/90 text-white"
-                  }`}
-                >
-                  {item.badge > 99 ? "99+" : item.badge}
-                </span>
-              )}
-            </Link>
-          );
-        })}
-      </nav>
-    </aside>
+    <>
+      {open && (
+        <div
+          className="fixed inset-0 z-30 bg-black/60 md:hidden"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 -translate-x-full flex-col border-r border-slate-800 bg-slate-900 transition-transform duration-200 md:static md:z-0 md:w-48 md:translate-x-0 ${
+          open ? "translate-x-0" : ""
+        }`}
+      >
+        <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
+          {items.map((item) => {
+            const active = pathname === item.href || pathname?.startsWith(item.href + "/");
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onClose}
+                className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors ${
+                  active
+                    ? "bg-blue-600 text-white shadow-sm shadow-blue-900/50"
+                    : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+                }`}
+              >
+                <Icon size={17} className={active ? "text-white" : "text-slate-500"} />
+                <span className="flex-1 truncate">{item.label}</span>
+                {!!item.badge && item.badge > 0 && (
+                  <span
+                    className={`rounded-full px-1.5 py-0.5 text-[11px] font-semibold ${
+                      active ? "bg-blue-800 text-blue-100" : "bg-red-500/90 text-white"
+                    }`}
+                  >
+                    {item.badge > 99 ? "99+" : item.badge}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+        </nav>
+      </aside>
+    </>
   );
 }
