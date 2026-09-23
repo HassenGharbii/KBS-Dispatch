@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { SiteForm, type SiteFormValue } from "./site-form";
 import { deactivateSite, reactivateSite, deleteSite } from "./actions";
 import { siteIconOrDefault } from "./site-icons";
@@ -46,12 +47,14 @@ function toFormValue(site: Site): SiteFormValue {
 }
 
 function ToggleActiveButton({ siteId, isActive }: { siteId: string; isActive: boolean }) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   return (
     <button
       onClick={() =>
         startTransition(async () => {
           await (isActive ? deactivateSite(siteId) : reactivateSite(siteId));
+          router.refresh();
         })
       }
       disabled={pending}
@@ -66,6 +69,7 @@ function ToggleActiveButton({ siteId, isActive }: { siteId: string; isActive: bo
 }
 
 function DeleteSiteButton({ siteId, siteName }: { siteId: string; siteName: string }) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -74,6 +78,7 @@ function DeleteSiteButton({ siteId, siteName }: { siteId: string; siteName: stri
     startTransition(async () => {
       const result = await deleteSite(siteId);
       setError(result.error);
+      if (!result.error) router.refresh();
     });
   }
 

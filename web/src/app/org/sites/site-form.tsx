@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { MapPin } from "lucide-react";
 import { createSite, updateSite, geocodeAddress } from "./actions";
 import { SITE_ICONS, SITE_ICON_LABELS } from "./site-icons";
@@ -32,6 +33,7 @@ export function SiteForm({
   site?: SiteFormValue;
   onSaved?: () => void;
 }) {
+  const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const addressRef = useRef<HTMLInputElement>(null);
   const submittingRef = useRef(false);
@@ -77,6 +79,7 @@ export function SiteForm({
       setLocation(null);
       setIcon("building");
     }
+    router.refresh();
     onSaved?.();
   }
 
