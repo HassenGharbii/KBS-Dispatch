@@ -53,6 +53,7 @@ function formatRelative(iso: string): string {
 export interface SiteLocation {
   id: string;
   name: string;
+  icon: string;
   lat: number;
   lng: number;
 }
@@ -185,7 +186,15 @@ export function LiveMap({
   }, [activeList, enRouteList]);
 
   const siteMarkers: MapMarker[] = useMemo(
-    () => sites.map((s) => ({ id: s.id, lat: s.lat, lng: s.lng, label: s.name, kind: "site" })),
+    () =>
+      sites.map((s) => ({
+        id: s.id,
+        lat: s.lat,
+        lng: s.lng,
+        label: s.name,
+        kind: "site",
+        siteIcon: s.icon,
+      })),
     [sites]
   );
 

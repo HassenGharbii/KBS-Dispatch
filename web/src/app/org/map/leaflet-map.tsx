@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { MapContainer, TileLayer, Marker, Tooltip, ScaleControl, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Plus, Minus, LocateFixed } from "lucide-react";
+import { siteIconOrDefault } from "../sites/site-icons";
 
 export interface MapMarker {
   id: string;
@@ -12,6 +14,8 @@ export interface MapMarker {
   lng: number;
   label: string;
   kind: "on_shift" | "en_route" | "site";
+  // Only set (and only relevant) for kind: "site" -- see site-icons.tsx.
+  siteIcon?: string;
 }
 
 export type TileStyle = "plan" | "satellite";
@@ -36,13 +40,13 @@ const TILE_SOURCES: Record<TileStyle, { url: string; attribution: string }> = {
 const DEFAULT_CENTER: [number, number] = [45.75, 4.85];
 const DEFAULT_ZOOM = 12;
 
-// Inline SVGs (lucide's User / MapPin glyphs) baked directly into the divIcon
-// HTML string -- Leaflet renders icons as raw DOM outside React's tree, so a
-// <User /> component can't be used here directly.
+// Agent glyph (lucide's User) baked directly into the divIcon HTML string --
+// Leaflet renders icons as raw DOM outside React's tree, so a <User />
+// component can't be used here directly. Site markers instead render their
+// actual chosen icon component via renderToStaticMarkup below, so the map
+// stays in sync with the icon picker (site-icons.tsx) automatically.
 const USER_SVG =
   '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>';
-const PIN_SVG =
-  '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>';
 
 const STATUS_LABELS: Record<MapMarker["kind"], string | null> = {
   on_shift: "En service",
@@ -50,14 +54,22 @@ const STATUS_LABELS: Record<MapMarker["kind"], string | null> = {
   site: null,
 };
 
-function markerIcon(kind: MapMarker["kind"]) {
+function markerIcon(kind: MapMarker["kind"], siteIcon?: string) {
   const color = kind === "site" ? "#475569" : kind === "en_route" ? "#a855f7" : "#3b82f6";
-  const glyph = kind === "site" ? PIN_SVG : USER_SVG;
   const size = kind === "site" ? 28 : 34;
   const pulseClass = kind === "site" ? "" : kind === "en_route" ? "marker-pulse-purple" : "marker-pulse-blue";
+  const glyphMarkup =
+    kind === "site"
+      ? renderToStaticMarkup(
+          (() => {
+            const Icon = siteIconOrDefault(siteIcon);
+            return <Icon color="#fff" size={size * 0.52} strokeWidth={2.25} />;
+          })()
+        )
+      : `<svg width="${size * 0.52}" height="${size * 0.52}" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">${USER_SVG}</svg>`;
   return L.divIcon({
     html: `<div class="${pulseClass}" style="width:${size}px;height:${size}px;border-radius:9999px;background:${color};display:flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(0,0,0,0.55);border:2.5px solid #0f172a;outline:2px solid rgba(255,255,255,0.85);">
-      <svg width="${size * 0.52}" height="${size * 0.52}" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">${glyph}</svg>
+      ${glyphMarkup}
     </div>`,
     className: "",
     iconSize: [size, size],
@@ -171,14 +183,14 @@ export function LeafletMap({
         <FlyToHandler target={flyTo} />
         <ScaleControl position="bottomright" imperial={false} />
         {siteMarkers.map((m) => (
-          <Marker key={m.id} position={[m.lat, m.lng]} icon={markerIcon(m.kind)}>
+          <Marker key={m.id} position={[m.lat, m.lng]} icon={markerIcon(m.kind, m.siteIcon)}>
             <Tooltip direction="top" offset={[0, -15]} permanent opacity={1} className="marker-tooltip">
               <MarkerLabel marker={m} />
             </Tooltip>
           </Marker>
         ))}
         {markers.map((m) => (
-          <Marker key={m.id} position={[m.lat, m.lng]} icon={markerIcon(m.kind)}>
+          <Marker key={m.id} position={[m.lat, m.lng]} icon={markerIcon(m.kind, m.siteIcon)}>
             <Tooltip direction="top" offset={[0, -19]} permanent opacity={1} className="marker-tooltip">
               <MarkerLabel marker={m} />
             </Tooltip>

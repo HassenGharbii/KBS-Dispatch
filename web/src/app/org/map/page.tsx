@@ -5,6 +5,7 @@ import type { ActiveShift, EnRouteMission } from "./types";
 interface SiteRow {
   id: string;
   name: string;
+  icon: string;
   lat: number | null;
   lng: number | null;
 }
@@ -58,7 +59,7 @@ export default async function MapPage() {
       )
       .eq("status", "en_route")
       .returns<MissionRow[]>(),
-    supabase.from("sites").select("id, name, lat, lng").eq("is_active", true).returns<SiteRow[]>(),
+    supabase.from("sites").select("id, name, icon, lat, lng").eq("is_active", true).returns<SiteRow[]>(),
     supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "agent"),
     supabase
       .from("missions")
@@ -102,7 +103,7 @@ export default async function MapPage() {
 
   const sites: SiteLocation[] = (siteRows ?? [])
     .filter((s): s is SiteRow & { lat: number; lng: number } => s.lat != null && s.lng != null)
-    .map((s) => ({ id: s.id, name: s.name, lat: s.lat, lng: s.lng }));
+    .map((s) => ({ id: s.id, name: s.name, icon: s.icon, lat: s.lat, lng: s.lng }));
 
   return (
     <LiveMap
