@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { MapPin } from "lucide-react";
 import { createSite, updateSite, geocodeAddress } from "./actions";
+import { SITE_ICONS, SITE_ICON_LABELS } from "./site-icons";
 
 const LocationPicker = dynamic(
   () => import("./location-picker").then((m) => m.LocationPicker),
@@ -19,6 +20,7 @@ export interface SiteFormValue {
   address: string;
   clientName: string | null;
   sensitivityLevel: number;
+  icon: string;
   lat: number | null;
   lng: number | null;
 }
@@ -39,6 +41,7 @@ export function SiteForm({
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
     site?.lat != null && site?.lng != null ? { lat: site.lat, lng: site.lng } : null
   );
+  const [icon, setIcon] = useState(site?.icon ?? "building");
 
   async function handleLocate() {
     const address = addressRef.current?.value.trim();
@@ -66,6 +69,7 @@ export function SiteForm({
     if (!site) {
       formRef.current?.reset();
       setLocation(null);
+      setIcon("building");
     }
     onSaved?.();
   }
@@ -111,6 +115,29 @@ export function SiteForm({
           </button>
         </div>
         {locateError && <p className="text-xs text-red-400">{locateError}</p>}
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-sm font-medium text-slate-300">Icône</label>
+        <input type="hidden" name="icon" value={icon} />
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(SITE_ICONS).map(([key, Icon]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setIcon(key)}
+              title={SITE_ICON_LABELS[key]}
+              aria-label={SITE_ICON_LABELS[key]}
+              className={`flex h-10 w-10 items-center justify-center rounded-md border transition-colors ${
+                icon === key
+                  ? "border-blue-500 bg-blue-600/20 text-blue-400"
+                  : "border-slate-700 text-slate-400 hover:bg-slate-800"
+              }`}
+            >
+              <Icon size={18} />
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="space-y-1">

@@ -12,7 +12,7 @@ export default async function SitesPage({
   const supabase = await createClient();
   let request = supabase
     .from("sites")
-    .select("id, name, address, client_name, sensitivity_level, is_active, lat, lng")
+    .select("id, name, address, client_name, sensitivity_level, icon, is_active, lat, lng")
     .order("name");
   if (query) request = request.ilike("name", `%${query}%`);
 

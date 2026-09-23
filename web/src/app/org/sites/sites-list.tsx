@@ -3,8 +3,9 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { SiteForm, type SiteFormValue } from "./site-form";
-import { deactivateSite, reactivateSite } from "./actions";
-import { Plus, Search, Building2, MapPin, ShieldAlert, Edit2, Power, X } from "lucide-react";
+import { deactivateSite, reactivateSite, deleteSite } from "./actions";
+import { siteIconOrDefault } from "./site-icons";
+import { Plus, Search, MapPin, ShieldAlert, Edit2, Power, Trash2, X } from "lucide-react";
 
 interface Site {
   id: string;
@@ -12,6 +13,7 @@ interface Site {
   address: string;
   client_name: string | null;
   sensitivity_level: number;
+  icon: string;
   is_active: boolean;
   lat: number | null;
   lng: number | null;
@@ -36,6 +38,7 @@ function toFormValue(site: Site): SiteFormValue {
     address: site.address,
     clientName: site.client_name,
     sensitivityLevel: site.sensitivity_level,
+    icon: site.icon,
     lat: site.lat,
     lng: site.lng,
   };
@@ -58,6 +61,37 @@ function ToggleActiveButton({ siteId, isActive }: { siteId: string; isActive: bo
       <Power size={12} />
       {isActive ? "Désactiver" : "Réactiver"}
     </button>
+  );
+}
+
+function DeleteSiteButton({ siteId, siteName }: { siteId: string; siteName: string }) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function handleClick() {
+    if (!window.confirm(`Supprimer définitivement le site « ${siteName} » ?`)) return;
+    startTransition(async () => {
+      const result = await deleteSite(siteId);
+      setError(result.error);
+    });
+  }
+
+  return (
+    <div className="relative">
+      <button
+        onClick={handleClick}
+        disabled={pending}
+        className="flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-red-400 disabled:opacity-50"
+      >
+        <Trash2 size={12} />
+        Supprimer
+      </button>
+      {error && (
+        <p className="absolute right-0 top-full z-10 mt-1 w-56 rounded-md border border-red-800 bg-slate-900 p-2 text-[11px] text-red-400 shadow-lg">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -109,10 +143,12 @@ export function SitesList({ sites, query }: { sites: Site[]; query: string }) {
 
       <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-slate-800 bg-slate-900">
         <div className="divide-y divide-slate-800">
-          {sites.map((site) => (
+          {sites.map((site) => {
+            const SiteIcon = siteIconOrDefault(site.icon);
+            return (
             <div key={site.id} className="flex items-center gap-3 px-3.5 py-2.5">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600/20 text-blue-400">
-                <Building2 size={16} />
+                <SiteIcon size={16} />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -148,9 +184,11 @@ export function SitesList({ sites, query }: { sites: Site[]; query: string }) {
                   Modifier
                 </button>
                 <ToggleActiveButton siteId={site.id} isActive={site.is_active} />
+                <DeleteSiteButton siteId={site.id} siteName={site.name} />
               </div>
             </div>
-          ))}
+            );
+          })}
           {sites.length === 0 && (
             <p className="px-4 py-6 text-center italic text-slate-500">
               {query ? "Aucun site ne correspond à cette recherche." : "Aucun site."}

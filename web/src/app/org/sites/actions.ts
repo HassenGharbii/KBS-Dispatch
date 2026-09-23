@@ -36,6 +36,7 @@ export async function createSite(formData: FormData) {
   const address = String(formData.get("address") ?? "").trim();
   const clientName = String(formData.get("clientName") ?? "").trim();
   const sensitivityLevel = Number(formData.get("sensitivityLevel") ?? 1);
+  const icon = String(formData.get("icon") ?? "building").trim();
   const latRaw = String(formData.get("lat") ?? "").trim();
   const lngRaw = String(formData.get("lng") ?? "").trim();
 
@@ -51,6 +52,7 @@ export async function createSite(formData: FormData) {
     address,
     client_name: clientName || null,
     sensitivity_level: sensitivityLevel,
+    icon,
     organization_id: profile.organizationId,
     lat: latRaw ? Number(latRaw) : null,
     lng: lngRaw ? Number(lngRaw) : null,
@@ -74,6 +76,7 @@ export async function updateSite(formData: FormData) {
   const address = String(formData.get("address") ?? "").trim();
   const clientName = String(formData.get("clientName") ?? "").trim();
   const sensitivityLevel = Number(formData.get("sensitivityLevel") ?? 1);
+  const icon = String(formData.get("icon") ?? "building").trim();
   const latRaw = String(formData.get("lat") ?? "").trim();
   const lngRaw = String(formData.get("lng") ?? "").trim();
 
@@ -87,6 +90,7 @@ export async function updateSite(formData: FormData) {
       address,
       client_name: clientName || null,
       sensitivity_level: sensitivityLevel,
+      icon,
       lat: latRaw ? Number(latRaw) : null,
       lng: lngRaw ? Number(lngRaw) : null,
     })
@@ -111,6 +115,33 @@ export async function deactivateSite(siteId: string) {
 
   revalidatePath("/org/map");
 
+  revalidatePath("/org/sites");
+  return { error: null };
+}
+
+export async function deleteSite(siteId: string) {
+  const profile = await getCurrentProfile();
+  if (!profile || (profile.role !== "dirigeant" && profile.role !== "sub_admin")) {
+    return { error: "Non autorisé" };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("sites").delete().eq("id", siteId);
+
+  if (error) {
+    // 23503 = foreign_key_violation: shifts/missions reference this site.
+    // Deleting real history would corrupt reports, so point the dirigeant at
+    // the non-destructive alternative instead of a raw Postgres error.
+    if (error.code === "23503") {
+      return {
+        error:
+          "Ce site a des missions ou services associés — impossible de le supprimer. Désactivez-le à la place.",
+      };
+    }
+    return { error: error.message };
+  }
+
+  revalidatePath("/org/map");
   revalidatePath("/org/sites");
   return { error: null };
 }
