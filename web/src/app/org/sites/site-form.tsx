@@ -34,6 +34,7 @@ export function SiteForm({
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const addressRef = useRef<HTMLInputElement>(null);
+  const submittingRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
@@ -58,9 +59,14 @@ export function SiteForm({
   }
 
   async function handleSubmit(formData: FormData) {
+    // Ref, not state: a fast double-click/double-tap fires two submit events
+    // before the `saving` state re-render lands and disables the button.
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setSaving(true);
     setError(null);
     const result = site ? await updateSite(formData) : await createSite(formData);
+    submittingRef.current = false;
     setSaving(false);
     if (result.error) {
       setError(result.error);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { User, Phone, Mail, Lock, Eye, EyeOff, Sparkles, Copy, Check } from "lucide-react";
 
@@ -34,6 +34,7 @@ function CopyButton({ value }: { value: string }) {
 
 export function SubAdminForm({ onCreated }: { onCreated?: () => void }) {
   const router = useRouter();
+  const submittingRef = useRef(false);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -45,6 +46,10 @@ export function SubAdminForm({ onCreated }: { onCreated?: () => void }) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // Ref, not state: a fast double-click/double-tap fires two submit events
+    // before the `saving` state re-render lands and disables the button.
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setSaving(true);
     setError(null);
 
@@ -57,10 +62,12 @@ export function SubAdminForm({ onCreated }: { onCreated?: () => void }) {
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       setError(body.error ?? "Erreur inconnue");
+      submittingRef.current = false;
       setSaving(false);
       return;
     }
 
+    submittingRef.current = false;
     setSaving(false);
     router.refresh();
     // Shown once so the dirigeant can hand the password off -- especially
