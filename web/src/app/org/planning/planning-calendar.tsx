@@ -4,9 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { MissionForm } from "../missions/mission-form";
+import { Modal } from "@/components/modal";
 import { addDays, isSameDay, toDateTimeLocal } from "./dates";
 import type { MissionStatus } from "../missions/types";
-import { ChevronLeft, ChevronRight, Plus, Radio, ChevronDown, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Radio, ChevronDown } from "lucide-react";
 
 // Matches the STATUS_COLORS convention already established in
 // missions-list.tsx -- keep raw per-status colors consistent with the rest
@@ -239,26 +240,15 @@ export function PlanningCalendar({
       </div>
 
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-md">
-            <div className="mb-2 flex justify-end">
-              <button
-                onClick={() => setModal(null)}
-                className="flex items-center gap-1 rounded-lg bg-slate-800 px-3 py-1 text-sm text-slate-300 hover:bg-slate-700"
-              >
-                <X size={14} />
-                Fermer
-              </button>
-            </div>
-            <MissionForm
-              sites={sites}
-              agents={agents}
-              initialSiteId={modal.siteId}
-              initialScheduledStart={modal.scheduledStart}
-              onCreated={() => setModal(null)}
-            />
-          </div>
-        </div>
+        <Modal title="Nouvelle mission" onClose={() => setModal(null)}>
+          <MissionForm
+            sites={sites}
+            agents={agents}
+            initialSiteId={modal.siteId}
+            initialScheduledStart={modal.scheduledStart}
+            onCreated={() => setModal(null)}
+          />
+        </Modal>
       )}
     </div>
   );

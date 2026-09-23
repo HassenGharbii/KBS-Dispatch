@@ -5,7 +5,8 @@ import Link from "next/link";
 import { SiteForm, type SiteFormValue } from "./site-form";
 import { deactivateSite, reactivateSite, deleteSite } from "./actions";
 import { siteIconOrDefault } from "./site-icons";
-import { Plus, Search, MapPin, ShieldAlert, Edit2, Power, Trash2, X } from "lucide-react";
+import { Modal } from "@/components/modal";
+import { Plus, Search, MapPin, ShieldAlert, Edit2, Power, Trash2 } from "lucide-react";
 
 interface Site {
   id: string;
@@ -198,20 +199,9 @@ export function SitesList({ sites, query }: { sites: Site[]; query: string }) {
       </div>
 
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-md">
-            <div className="mb-2 flex justify-end">
-              <button
-                onClick={() => setModal(null)}
-                className="flex items-center gap-1 rounded-lg bg-slate-800 px-3 py-1 text-sm text-slate-300 hover:bg-slate-700"
-              >
-                <X size={14} />
-                Fermer
-              </button>
-            </div>
-            <SiteForm site={modal === "create" ? undefined : toFormValue(modal)} onSaved={() => setModal(null)} />
-          </div>
-        </div>
+        <Modal title={modal === "create" ? "Nouveau site" : "Modifier le site"} onClose={() => setModal(null)}>
+          <SiteForm site={modal === "create" ? undefined : toFormValue(modal)} onSaved={() => setModal(null)} />
+        </Modal>
       )}
     </div>
   );

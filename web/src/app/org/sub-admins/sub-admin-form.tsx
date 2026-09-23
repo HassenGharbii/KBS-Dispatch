@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { User, Phone, Mail, Lock, Eye, EyeOff, Sparkles, Copy, Check, ShieldPlus } from "lucide-react";
+import { User, Phone, Mail, Lock, Eye, EyeOff, Sparkles, Copy, Check } from "lucide-react";
 
 const inputClass =
   "w-full rounded-md border border-slate-700 bg-slate-800 py-2 pl-9 pr-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none";
@@ -70,10 +70,10 @@ export function SubAdminForm({ onCreated }: { onCreated?: () => void }) {
 
   if (created) {
     return (
-      <div className="space-y-4 rounded-lg border border-slate-800 bg-slate-900 p-6">
+      <div className="space-y-4">
         <div className="flex items-center gap-2 text-emerald-400">
           <Check size={18} />
-          <h2 className="text-sm font-semibold">Sous-administrateur créé</h2>
+          <h3 className="text-sm font-semibold">Sous-administrateur créé</h3>
         </div>
         <p className="text-sm text-slate-400">
           Transmettez ces identifiants à l&apos;intéressé — ils ne seront plus affichés ensuite.
@@ -106,17 +106,8 @@ export function SubAdminForm({ onCreated }: { onCreated?: () => void }) {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      autoComplete="off"
-      className="space-y-4 rounded-lg border border-slate-800 bg-slate-900 p-6"
-    >
-      <div className="flex items-center gap-2 text-slate-100">
-        <ShieldPlus size={17} className="text-purple-400" />
-        <h2 className="text-sm font-semibold">Nouveau sous-administrateur</h2>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
+    <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1">
           <label className="text-sm font-medium text-slate-300">Nom complet</label>
           <div className="relative">

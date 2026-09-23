@@ -75,15 +75,10 @@ export function SiteForm({
   }
 
   return (
-    <form
-      ref={formRef}
-      action={handleSubmit}
-      className="space-y-4 rounded-lg border border-slate-800 bg-slate-900 p-6"
-    >
-      <h2 className="text-sm font-semibold text-slate-100">{site ? "Modifier le site" : "Nouveau site"}</h2>
+    <form ref={formRef} action={handleSubmit} className="space-y-4">
       {site && <input type="hidden" name="siteId" value={site.id} />}
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1">
           <label className="text-sm font-medium text-slate-300">Nom</label>
           <input name="name" required defaultValue={site?.name} className={inputClass} />
@@ -96,7 +91,7 @@ export function SiteForm({
 
       <div className="space-y-1">
         <label className="text-sm font-medium text-slate-300">Adresse</label>
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <input
             ref={addressRef}
             name="address"
@@ -108,7 +103,7 @@ export function SiteForm({
             type="button"
             onClick={handleLocate}
             disabled={locating}
-            className="flex shrink-0 items-center gap-1.5 rounded-md border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 disabled:opacity-50"
+            className="flex shrink-0 items-center justify-center gap-1.5 rounded-md border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 disabled:opacity-50"
           >
             <MapPin size={14} />
             {locating ? "Recherche…" : "Localiser"}
@@ -163,7 +158,7 @@ export function SiteForm({
       <button
         type="submit"
         disabled={saving}
-        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+        className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
       >
         {saving ? "Enregistrement…" : site ? "Enregistrer" : "Créer le site"}
       </button>

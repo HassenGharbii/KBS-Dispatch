@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SubAdminForm } from "./sub-admin-form";
 import { updateSubAdminProfile } from "./actions";
-import { Plus, Phone, X, Search, Edit2 } from "lucide-react";
+import { Modal } from "@/components/modal";
+import { Plus, Phone, Search, Edit2 } from "lucide-react";
 
 interface SubAdmin {
   id: string;
@@ -40,8 +41,7 @@ function EditSubAdminForm({ subAdmin, onSaved }: { subAdmin: SubAdmin; onSaved: 
   }
 
   return (
-    <form action={handleSubmit} className="space-y-4 rounded-lg border border-slate-800 bg-slate-900 p-6">
-      <h2 className="text-sm font-semibold text-slate-100">Modifier le sous-administrateur</h2>
+    <form action={handleSubmit} className="space-y-4">
       <div className="space-y-1">
         <label className="text-sm font-medium text-slate-300">Nom complet</label>
         <input name="fullName" required defaultValue={subAdmin.full_name} className={inputClass} />
@@ -54,7 +54,7 @@ function EditSubAdminForm({ subAdmin, onSaved }: { subAdmin: SubAdmin; onSaved: 
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+        className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
       >
         {pending ? "Enregistrement…" : "Enregistrer"}
       </button>
@@ -141,37 +141,15 @@ export function SubAdminsList({ subAdmins, query }: { subAdmins: SubAdmin[]; que
       </div>
 
       {createOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-md">
-            <div className="mb-2 flex justify-end">
-              <button
-                onClick={() => setCreateOpen(false)}
-                className="flex items-center gap-1 rounded-lg bg-slate-800 px-3 py-1 text-sm text-slate-300 hover:bg-slate-700"
-              >
-                <X size={14} />
-                Fermer
-              </button>
-            </div>
-            <SubAdminForm onCreated={() => setCreateOpen(false)} />
-          </div>
-        </div>
+        <Modal title="Nouveau sous-administrateur" onClose={() => setCreateOpen(false)}>
+          <SubAdminForm onCreated={() => setCreateOpen(false)} />
+        </Modal>
       )}
 
       {editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-md">
-            <div className="mb-2 flex justify-end">
-              <button
-                onClick={() => setEditing(null)}
-                className="flex items-center gap-1 rounded-lg bg-slate-800 px-3 py-1 text-sm text-slate-300 hover:bg-slate-700"
-              >
-                <X size={14} />
-                Fermer
-              </button>
-            </div>
-            <EditSubAdminForm subAdmin={editing} onSaved={() => setEditing(null)} />
-          </div>
-        </div>
+        <Modal title="Modifier le sous-administrateur" onClose={() => setEditing(null)}>
+          <EditSubAdminForm subAdmin={editing} onSaved={() => setEditing(null)} />
+        </Modal>
       )}
     </div>
   );

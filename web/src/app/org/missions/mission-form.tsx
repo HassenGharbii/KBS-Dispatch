@@ -44,14 +44,8 @@ export function MissionForm({
   }
 
   return (
-    <form
-      ref={formRef}
-      action={handleSubmit}
-      className="space-y-4 rounded-lg border border-slate-800 bg-slate-900 p-6"
-    >
-      <h2 className="text-sm font-semibold text-slate-100">Nouvelle mission</h2>
-
-      <div className="grid grid-cols-2 gap-4">
+    <form ref={formRef} action={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1">
           <label className="text-sm font-medium text-slate-300">Site</label>
           <select name="siteId" required defaultValue={initialSiteId ?? ""} className={inputClass}>
@@ -118,7 +112,7 @@ export function MissionForm({
       <button
         type="submit"
         disabled={saving}
-        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+        className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
       >
         {saving ? "Création…" : "Créer la mission"}
       </button>

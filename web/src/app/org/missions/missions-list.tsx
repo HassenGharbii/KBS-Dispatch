@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { cancelMission, reassignMission } from "./actions";
 import { MissionForm } from "./mission-form";
+import { Modal } from "@/components/modal";
 import type { MissionWithNames, MissionStatus } from "./types";
-import { Plus, Radio, X } from "lucide-react";
+import { Plus, Radio } from "lucide-react";
 
 const STATUS_LABELS: Record<MissionStatus, string> = {
   proposed: "Proposée",
@@ -240,20 +241,9 @@ export function MissionsList({
       </div>
 
       {createOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-md">
-            <div className="mb-2 flex justify-end">
-              <button
-                onClick={() => setCreateOpen(false)}
-                className="flex items-center gap-1 rounded-lg bg-slate-800 px-3 py-1 text-sm text-slate-300 hover:bg-slate-700"
-              >
-                <X size={14} />
-                Fermer
-              </button>
-            </div>
-            <MissionForm sites={sites} agents={agents} onCreated={() => setCreateOpen(false)} />
-          </div>
-        </div>
+        <Modal title="Nouvelle mission" onClose={() => setCreateOpen(false)}>
+          <MissionForm sites={sites} agents={agents} onCreated={() => setCreateOpen(false)} />
+        </Modal>
       )}
     </div>
   );
