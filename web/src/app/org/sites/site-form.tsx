@@ -2,7 +2,8 @@
 
 import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { createSite, updateSite } from "./actions";
+import { MapPin } from "lucide-react";
+import { createSite, updateSite, geocodeAddress } from "./actions";
 
 const LocationPicker = dynamic(
   () => import("./location-picker").then((m) => m.LocationPicker),
@@ -30,11 +31,28 @@ export function SiteForm({
   onSaved?: () => void;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
+  const addressRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState<string | null>(null);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
     site?.lat != null && site?.lng != null ? { lat: site.lat, lng: site.lng } : null
   );
+
+  async function handleLocate() {
+    const address = addressRef.current?.value.trim();
+    if (!address) return;
+    setLocating(true);
+    setLocateError(null);
+    const result = await geocodeAddress(address);
+    setLocating(false);
+    if (!result) {
+      setLocateError("Adresse introuvable — placez le point manuellement sur la carte.");
+      return;
+    }
+    setLocation(result);
+  }
 
   async function handleSubmit(formData: FormData) {
     setSaving(true);
@@ -74,7 +92,25 @@ export function SiteForm({
 
       <div className="space-y-1">
         <label className="text-sm font-medium text-slate-300">Adresse</label>
-        <input name="address" required defaultValue={site?.address} className={inputClass} />
+        <div className="flex gap-2">
+          <input
+            ref={addressRef}
+            name="address"
+            required
+            defaultValue={site?.address}
+            className={inputClass}
+          />
+          <button
+            type="button"
+            onClick={handleLocate}
+            disabled={locating}
+            className="flex shrink-0 items-center gap-1.5 rounded-md border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 disabled:opacity-50"
+          >
+            <MapPin size={14} />
+            {locating ? "Recherche…" : "Localiser"}
+          </button>
+        </div>
+        {locateError && <p className="text-xs text-red-400">{locateError}</p>}
       </div>
 
       <div className="space-y-1">

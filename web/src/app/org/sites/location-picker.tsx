@@ -1,6 +1,7 @@
 "use client";
 
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import { useEffect } from "react";
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -25,6 +26,18 @@ function ClickHandler({ onPick }: { onPick: (lat: number, lng: number) => void }
   return null;
 }
 
+// react-leaflet's `center` prop only applies on first mount -- without this,
+// a geocoded address (which sets `value` well after the map already
+// rendered) would drop a marker off-screen instead of flying the view to it.
+function RecenterOnChange({ value }: { value: { lat: number; lng: number } | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (value) map.setView([value.lat, value.lng], 15);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value?.lat, value?.lng]);
+  return null;
+}
+
 export function LocationPicker({
   value,
   onChange,
@@ -40,6 +53,7 @@ export function LocationPicker({
           attribution="&copy; OpenStreetMap contributors"
         />
         <ClickHandler onPick={onChange} />
+        <RecenterOnChange value={value} />
         {value && (
           <Marker
             position={value}

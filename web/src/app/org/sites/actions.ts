@@ -4,6 +4,27 @@ import { revalidatePath } from "next/cache";
 import { getCurrentProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
+// Free geocoding via OpenStreetMap's Nominatim, matching the free-tiles-only
+// convention already used for the map itself. Must run server-side: Nominatim's
+// usage policy requires a real identifying User-Agent, which a browser fetch
+// can't set (the header is reserved/overridden by the browser itself).
+export async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+  const trimmed = address.trim();
+  if (!trimmed) return null;
+
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(trimmed)}`;
+  const res = await fetch(url, {
+    headers: { "User-Agent": "KBS-Dispatch/1.0 (self-hosted security dispatch console)" },
+  });
+  if (!res.ok) return null;
+
+  const results = (await res.json()) as Array<{ lat: string; lon: string }>;
+  const first = results[0];
+  if (!first) return null;
+
+  return { lat: Number(first.lat), lng: Number(first.lon) };
+}
+
 export async function createSite(formData: FormData) {
   const profile = await getCurrentProfile();
   if (!profile || !profile.organizationId) return { error: "Non autorisé" };
