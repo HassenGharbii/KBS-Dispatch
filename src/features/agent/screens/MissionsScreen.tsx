@@ -14,9 +14,15 @@ import {
   respondToMission,
   cancelMission,
   startMissionProgress,
+  canStartMission,
+  MISSION_START_WINDOW_MS,
   type MissionWithNames,
 } from '../../../lib/missionsApi';
-import { scheduleMissionReminders, cancelMissionReminders } from '../../../lib/localNotifications';
+import {
+  scheduleMissionReminders,
+  cancelMissionReminders,
+  scheduleEndOfMissionAlerts,
+} from '../../../lib/localNotifications';
 import { openNavigation } from '../../../lib/routing';
 import { startShift } from '../../../db/repositories/shiftsRepo';
 import { beginLocationFix, withTimeout } from '../../../lib/location';
@@ -75,6 +81,24 @@ function formatDateTime(iso: string): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function formatCountdown(ms: number): string {
+  const totalMin = Math.max(0, Math.ceil(ms / 60_000));
+  const hours = Math.floor(totalMin / 60);
+  const minutes = totalMin % 60;
+  if (hours > 0) return `${hours}h${minutes.toString().padStart(2, '0')}`;
+  return `${minutes} min`;
+}
+
+/** Ticks every 15s so the start-lock countdown and its unlock stay live without a manual refresh. */
+function useNow(): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 15_000);
+    return () => clearInterval(interval);
+  }, []);
+  return now;
 }
 
 function MissionCard({
@@ -141,6 +165,9 @@ function MissionCard({
       if (error) {
         Alert.alert('Erreur', error);
         return;
+      }
+      if (mission.scheduledEnd) {
+        await scheduleEndOfMissionAlerts(mission.id, mission.siteName, mission.scheduledEnd);
       }
 
       await refreshPendingCount();
@@ -215,7 +242,10 @@ function MissionCard({
     ]);
   }
 
-  const canCancel = new Date(mission.scheduledStart).getTime() - Date.now() >= CANCEL_WINDOW_MS;
+  const now = useNow();
+  const canCancel = new Date(mission.scheduledStart).getTime() - now >= CANCEL_WINDOW_MS;
+  const startUnlocked = canStartMission(mission.scheduledStart);
+  const startsInMs = new Date(mission.scheduledStart).getTime() - MISSION_START_WINDOW_MS - now;
 
   return (
     <View style={styles.card}>
@@ -250,10 +280,19 @@ function MissionCard({
           )}
           {(mission.status === 'accepted' || mission.status === 'en_route') && (
             <>
-              <Pressable style={styles.acceptButton} onPress={handleStartShift}>
-                <Feather name="play" size={15} color={colors.textOnPrimary} />
-                <Text style={styles.acceptButtonText}>Prendre le service</Text>
-              </Pressable>
+              {startUnlocked ? (
+                <Pressable style={styles.acceptButton} onPress={handleStartShift}>
+                  <Feather name="play" size={15} color={colors.textOnPrimary} />
+                  <Text style={styles.acceptButtonText}>Prendre le service</Text>
+                </Pressable>
+              ) : (
+                <View style={styles.startLockedRow}>
+                  <Feather name="lock" size={12} color={colors.textMuted} />
+                  <Text style={styles.startLockedText}>
+                    Prise de service disponible dans {formatCountdown(startsInMs)}
+                  </Text>
+                </View>
+              )}
               <Pressable style={styles.navigateButton} onPress={handleNavigate}>
                 <Feather name="navigation" size={15} color={colors.textOnPrimary} />
                 <Text style={styles.navigateButtonText}>Naviguer</Text>
@@ -644,6 +683,16 @@ const styles = StyleSheet.create({
   tabButtonActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   tabButtonText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
   tabButtonTextActive: { color: colors.textOnPrimary },
+  startLockedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.background,
+    borderRadius: radius.sm,
+    paddingVertical: 10,
+    paddingHorizontal: spacing.md,
+  },
+  startLockedText: { fontSize: 12, color: colors.textMuted, fontStyle: 'italic' },
   cancelDisabledRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, alignSelf: 'center' },
   cancelDisabledText: {
     fontSize: 12,

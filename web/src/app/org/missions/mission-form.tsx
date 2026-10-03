@@ -106,6 +106,12 @@ export function MissionForm({
           defaultValue={initialScheduledStart}
           className={inputClass}
         />
+        <p className="text-xs text-slate-500">Au moins 10 minutes après maintenant.</p>
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-sm font-medium text-slate-300">Date et heure de fin prévue</label>
+        <input type="datetime-local" name="scheduledEnd" required className={inputClass} />
       </div>
 
       <div className="space-y-1">

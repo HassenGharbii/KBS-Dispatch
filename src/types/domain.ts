@@ -71,6 +71,18 @@ export interface MissionSwapRequest {
   createdAt: string;
 }
 
+export type MissionOvertimeStatus = 'requested' | 'accepted' | 'refused';
+
+export interface MissionOvertimeRequest {
+  id: string;
+  missionId: string;
+  agentId: string;
+  requestedMinutes: number;
+  status: MissionOvertimeStatus;
+  respondedAt: string | null;
+  createdAt: string;
+}
+
 export interface AgentUnavailability {
   id: string;
   agentId: string;

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ActivityIndicator, FlatList, Alert } from 'react-native';
+import { View, Text, Pressable, TextInput, StyleSheet, ActivityIndicator, FlatList, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -19,8 +19,13 @@ import { SyncStatusBadge } from '../../../components/SyncStatusBadge';
 import { OfflineBanner } from '../../../components/OfflineBanner';
 import { beginLocationFix, withTimeout } from '../../../lib/location';
 import { runSync, refreshPendingCount } from '../../../sync/syncEngine';
-import { completeMission } from '../../../lib/missionsApi';
+import { completeMission, getMissionById } from '../../../lib/missionsApi';
+import { requestOvertime, listOvertimeRequestsForAgent } from '../../../lib/overtimeApi';
+import { scheduleEndOfMissionAlerts, cancelMissionReminders } from '../../../lib/localNotifications';
+import { supabase } from '../../../lib/supabase';
 import { colors, spacing, radius, typography, cardShadow } from '../../../theme';
+
+const OVERTIME_OFFER_WINDOW_MS = 10 * 60 * 1000; // show the request button from 10min before scheduled_end
 
 type Props = NativeStackScreenProps<ServiceStackParamList, 'Service'>;
 
@@ -76,12 +81,83 @@ export default function ServiceScreen({ navigation }: Props) {
 
   const elapsed = useElapsed(shift?.startAt);
 
+  const missionQuery = useQuery({
+    queryKey: ['mission', shift?.missionId],
+    queryFn: () => getMissionById(shift!.missionId!),
+    enabled: Boolean(shift?.missionId),
+  });
+  const mission = missionQuery.data ?? null;
+
+  const overtimeQuery = useQuery({
+    queryKey: ['overtimeRequests', agentId],
+    queryFn: () => listOvertimeRequestsForAgent(agentId),
+    enabled: Boolean(agentId),
+  });
+  const pendingOvertimeRequest = (overtimeQuery.data ?? []).find(
+    (r) => r.missionId === shift?.missionId && r.status === 'requested'
+  );
+
+  const [overtimeMinutes, setOvertimeMinutes] = useState('30');
+  const [requestingOvertime, setRequestingOvertime] = useState(false);
+
   useFocusEffect(
     React.useCallback(() => {
       shiftQuery.refetch();
       eventsQuery.refetch();
     }, []) // eslint-disable-line react-hooks/exhaustive-deps
   );
+
+  useEffect(() => {
+    if (!shift?.missionId) return;
+    const channel = supabase
+      .channel(`service-mission-${shift.missionId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'missions', filter: `id=eq.${shift.missionId}` },
+        () => queryClient.invalidateQueries({ queryKey: ['mission', shift.missionId] })
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'mission_overtime_requests', filter: `mission_id=eq.${shift.missionId}` },
+        () => queryClient.invalidateQueries({ queryKey: ['overtimeRequests', agentId] })
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [shift?.missionId, agentId, queryClient]);
+
+  useEffect(() => {
+    // An accepted overtime request pushes scheduled_end back server-side --
+    // re-anchor the local "mission ending" alerts whenever it moves.
+    if (!mission?.scheduledEnd) return;
+    scheduleEndOfMissionAlerts(mission.id, mission.siteName, mission.scheduledEnd);
+  }, [mission?.id, mission?.scheduledEnd, mission?.siteName]);
+
+  async function handleRequestOvertime() {
+    if (!shift?.missionId || !profile) return;
+    const minutes = Number(overtimeMinutes);
+    if (!Number.isFinite(minutes) || minutes <= 0) {
+      Alert.alert('Durée invalide', 'Indiquez un nombre de minutes positif.');
+      return;
+    }
+    setRequestingOvertime(true);
+    try {
+      const { error } = await requestOvertime(shift.missionId, profile.id, Math.round(minutes));
+      if (error) {
+        Alert.alert('Erreur', error);
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ['overtimeRequests', agentId] });
+    } finally {
+      setRequestingOvertime(false);
+    }
+  }
+
+  const showOvertimeOffer =
+    Boolean(mission?.scheduledEnd) &&
+    new Date(mission!.scheduledEnd!).getTime() - Date.now() <= OVERTIME_OFFER_WINDOW_MS;
 
   async function handleEndShift() {
     if (!shift || ending) return;
@@ -97,6 +173,7 @@ export default function ServiceScreen({ navigation }: Props) {
       }
       if (shift.missionId) {
         completeMission(shift.missionId);
+        await cancelMissionReminders(shift.missionId);
       }
       await refreshPendingCount();
       runSync();
@@ -172,6 +249,46 @@ export default function ServiceScreen({ navigation }: Props) {
         }
         contentContainerStyle={styles.list}
       />
+      {showOvertimeOffer && (
+        <View style={styles.overtimeBox}>
+          {pendingOvertimeRequest ? (
+            <View style={styles.overtimePendingRow}>
+              <Feather name="clock" size={13} color={colors.purple} />
+              <Text style={styles.overtimePendingText}>
+                Demande de {pendingOvertimeRequest.requestedMinutes} min envoyée — en attente du dirigeant.
+              </Text>
+            </View>
+          ) : (
+            <>
+              <View style={styles.overtimeHeaderRow}>
+                <Feather name="alert-circle" size={13} color={colors.purple} />
+                <Text style={styles.overtimeHeaderText}>Fin de mission proche</Text>
+              </View>
+              <View style={styles.overtimeRow}>
+                <TextInput
+                  style={styles.overtimeInput}
+                  value={overtimeMinutes}
+                  onChangeText={setOvertimeMinutes}
+                  keyboardType="number-pad"
+                  placeholder="30"
+                />
+                <Text style={styles.overtimeUnit}>min</Text>
+                <Pressable
+                  style={styles.overtimeButton}
+                  onPress={handleRequestOvertime}
+                  disabled={requestingOvertime}
+                >
+                  {requestingOvertime ? (
+                    <ActivityIndicator color={colors.textOnPrimary} size="small" />
+                  ) : (
+                    <Text style={styles.overtimeButtonText}>Demander des heures sup</Text>
+                  )}
+                </Pressable>
+              </View>
+            </>
+          )}
+        </View>
+      )}
       <View style={styles.footer}>
         <Pressable
           style={styles.primaryButton}
@@ -242,6 +359,40 @@ const styles = StyleSheet.create({
   list: { padding: spacing.lg, flexGrow: 1 },
   emptyEventsBox: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xxl },
   emptyEvents: { color: colors.textMuted, fontStyle: 'italic' },
+  overtimeBox: {
+    margin: spacing.lg,
+    marginBottom: 0,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.purpleLight,
+  },
+  overtimeHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.sm },
+  overtimeHeaderText: { fontSize: 13, fontWeight: '700', color: colors.purple },
+  overtimeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  overtimeInput: {
+    width: 56,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingVertical: 8,
+    paddingHorizontal: spacing.sm,
+    fontSize: 15,
+    color: colors.textPrimary,
+    textAlign: 'center',
+  },
+  overtimeUnit: { fontSize: 13, color: colors.purple },
+  overtimeButton: {
+    flex: 1,
+    backgroundColor: colors.purple,
+    borderRadius: radius.sm,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  overtimeButtonText: { color: colors.textOnPrimary, fontSize: 13, fontWeight: '600' },
+  overtimePendingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  overtimePendingText: { fontSize: 13, color: colors.purple, fontStyle: 'italic', flexShrink: 1 },
   footer: { padding: spacing.lg, gap: spacing.sm, backgroundColor: colors.background },
   primaryButton: {
     flexDirection: 'row',

@@ -18,7 +18,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MissionsStackParamList } from '../../../navigation/DirigeantStack';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { listActiveSites } from '../../../db/repositories/sitesRepo';
-import { listAgents, createMission } from '../../../lib/missionsApi';
+import { listAgents, createMission, MISSION_MIN_CREATE_LEAD_MS } from '../../../lib/missionsApi';
 import { AgentPickerWithBroadcast } from '../../../components/AgentPickerWithBroadcast';
 import { colors, spacing, radius, typography, cardShadow } from '../../../theme';
 
@@ -28,6 +28,12 @@ function defaultScheduledStart(): Date {
   const d = new Date();
   d.setMinutes(0, 0, 0);
   d.setHours(d.getHours() + 1);
+  return d;
+}
+
+function defaultScheduledEnd(start: Date): Date {
+  const d = new Date(start);
+  d.setHours(d.getHours() + 8);
   return d;
 }
 
@@ -50,23 +56,38 @@ export default function MissionCreateScreen({ navigation }: Props) {
   const [agentId, setAgentId] = useState<string | null>(null);
   const [isBroadcast, setIsBroadcast] = useState(false);
   const [scheduledStart, setScheduledStart] = useState(defaultScheduledStart);
-  // Android's native picker only supports a single mode per dialog, so
-  // creating a mission walks date -> time as two separate dialogs; iOS's
-  // picker supports a combined 'datetime' spinner in one step.
-  const [pickerStep, setPickerStep] = useState<'date' | 'time' | null>(null);
-  const pickerMode = Platform.OS === 'ios' ? 'datetime' : (pickerStep ?? 'date');
+  const [scheduledEnd, setScheduledEnd] = useState(() => defaultScheduledEnd(defaultScheduledStart()));
+  // Which field + which half of the Android date/time dialog pair is open;
+  // null when no picker is showing. iOS's picker supports a combined
+  // 'datetime' spinner in one step, so pickerStep stays 'date' there.
+  const [activeField, setActiveField] = useState<'start' | 'end' | null>(null);
+  const [pickerStep, setPickerStep] = useState<'date' | 'time'>('date');
+  const pickerMode = Platform.OS === 'ios' ? 'datetime' : pickerStep;
   const [instructions, setInstructions] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const canSubmit = Boolean(siteId && profile && (isBroadcast || agentId));
+  const canSubmit = Boolean(
+    siteId &&
+      profile &&
+      (isBroadcast || agentId) &&
+      scheduledEnd.getTime() > scheduledStart.getTime() &&
+      scheduledStart.getTime() - Date.now() >= MISSION_MIN_CREATE_LEAD_MS
+  );
+
+  function openPicker(field: 'start' | 'end') {
+    setActiveField(field);
+    setPickerStep('date');
+  }
 
   function handlePickerChange(event: { type: string }, selected?: Date) {
     // Android dismisses immediately after either a tap on a value or Cancel;
     // iOS keeps the spinner mounted until the user taps the "OK" button below.
-    if (Platform.OS === 'android') setPickerStep(null);
-    if (event.type !== 'set' || !selected) return;
+    const field = activeField;
+    if (Platform.OS === 'android') setActiveField(null);
+    if (event.type !== 'set' || !selected || !field) return;
 
-    setScheduledStart((prev) => {
+    const setter = field === 'start' ? setScheduledStart : setScheduledEnd;
+    setter((prev) => {
       const next = new Date(prev);
       if (pickerMode === 'datetime') {
         return selected;
@@ -80,12 +101,21 @@ export default function MissionCreateScreen({ navigation }: Props) {
     });
 
     if (Platform.OS === 'android' && pickerStep === 'date') {
+      setActiveField(field);
       setPickerStep('time');
     }
   }
 
   async function handleCreate() {
     if (!siteId || !profile || (!isBroadcast && !agentId)) return;
+    if (scheduledStart.getTime() - Date.now() < MISSION_MIN_CREATE_LEAD_MS) {
+      Alert.alert('Délai insuffisant', 'Une mission doit être créée au moins 10 minutes avant son début.');
+      return;
+    }
+    if (scheduledEnd.getTime() <= scheduledStart.getTime()) {
+      Alert.alert('Horaires invalides', 'La fin de mission doit être après son début.');
+      return;
+    }
     setSaving(true);
     try {
       const { error } = await createMission({
@@ -93,6 +123,7 @@ export default function MissionCreateScreen({ navigation }: Props) {
         agentId: isBroadcast ? null : agentId,
         createdBy: profile.id,
         scheduledStart: scheduledStart.toISOString(),
+        scheduledEnd: scheduledEnd.toISOString(),
         instructions: instructions.trim() || null,
         isBroadcast,
       });
@@ -154,21 +185,39 @@ export default function MissionCreateScreen({ navigation }: Props) {
         <Feather name="clock" size={14} color={colors.textSecondary} />
         <Text style={styles.label}>Date et heure de prise de service</Text>
       </View>
-      <Pressable style={styles.dateButton} onPress={() => setPickerStep('date')}>
+      <Pressable style={styles.dateButton} onPress={() => openPicker('start')}>
         <Feather name="calendar" size={16} color={colors.textSecondary} />
         <Text style={styles.dateButtonText}>{formatScheduledStart(scheduledStart)}</Text>
       </Pressable>
-      {pickerStep && (
+      {scheduledStart.getTime() - Date.now() < MISSION_MIN_CREATE_LEAD_MS && (
+        <Text style={styles.warningText}>
+          Doit être au moins 10 minutes après maintenant.
+        </Text>
+      )}
+
+      <View style={styles.labelRow}>
+        <Feather name="clock" size={14} color={colors.textSecondary} />
+        <Text style={styles.label}>Date et heure de fin prévue</Text>
+      </View>
+      <Pressable style={styles.dateButton} onPress={() => openPicker('end')}>
+        <Feather name="calendar" size={16} color={colors.textSecondary} />
+        <Text style={styles.dateButtonText}>{formatScheduledStart(scheduledEnd)}</Text>
+      </Pressable>
+      {scheduledEnd.getTime() <= scheduledStart.getTime() && (
+        <Text style={styles.warningText}>Doit être après le début de la mission.</Text>
+      )}
+
+      {activeField && (
         <DateTimePicker
-          value={scheduledStart}
+          value={activeField === 'start' ? scheduledStart : scheduledEnd}
           mode={pickerMode}
           display="default"
           is24Hour
           onChange={handlePickerChange}
         />
       )}
-      {Platform.OS === 'ios' && pickerStep && (
-        <Pressable style={styles.doneButton} onPress={() => setPickerStep(null)}>
+      {Platform.OS === 'ios' && activeField && (
+        <Pressable style={styles.doneButton} onPress={() => setActiveField(null)}>
           <Text style={styles.doneButtonText}>OK</Text>
         </Pressable>
       )}
@@ -226,6 +275,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   dateButtonText: { fontSize: 16, color: colors.textPrimary },
+  warningText: { fontSize: 12, color: colors.danger, marginTop: spacing.xs },
   doneButton: {
     backgroundColor: colors.primary,
     borderRadius: radius.md,

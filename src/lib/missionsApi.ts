@@ -84,9 +84,31 @@ export interface CreateMissionInput {
   agentId: string | null;
   createdBy: string;
   scheduledStart: string;
-  scheduledEnd?: string | null;
+  // Required (not just typed optional): the server-side
+  // enforce_mission_create_timing trigger rejects an insert without it, and
+  // without a known end time neither the end-of-mission reminders nor
+  // overtime requests have anything to anchor to.
+  scheduledEnd: string;
   instructions?: string | null;
   isBroadcast?: boolean;
+}
+
+/**
+ * Mirrors the server-side enforce_mission_create_timing trigger -- avoids a
+ * round trip to the DB for a mistake the client can catch immediately. The
+ * trigger is the real enforcement.
+ */
+export const MISSION_MIN_CREATE_LEAD_MS = 10 * 60 * 1000;
+
+/**
+ * Mirrors the server-side enforce_agent_start_window trigger -- "Prendre le
+ * service" is disabled client-side before this window opens, purely for UX;
+ * the trigger is the real enforcement.
+ */
+export const MISSION_START_WINDOW_MS = 10 * 60 * 1000;
+
+export function canStartMission(scheduledStart: string): boolean {
+  return new Date(scheduledStart).getTime() - Date.now() <= MISSION_START_WINDOW_MS;
 }
 
 export async function createMission(input: CreateMissionInput): Promise<{ error: string | null }> {
@@ -95,7 +117,7 @@ export async function createMission(input: CreateMissionInput): Promise<{ error:
     agent_id: input.agentId,
     created_by: input.createdBy,
     scheduled_start: input.scheduledStart,
-    scheduled_end: input.scheduledEnd ?? null,
+    scheduled_end: input.scheduledEnd,
     instructions: input.instructions ?? null,
     is_broadcast: input.isBroadcast ?? false,
   });
@@ -171,6 +193,16 @@ export async function listAllMissions(): Promise<MissionWithNames[]> {
     .order('scheduled_start', { ascending: false });
   if (error || !data) return [];
   return (data as unknown as MissionRow[]).map(toMission);
+}
+
+export async function getMissionById(missionId: string): Promise<MissionWithNames | null> {
+  const { data, error } = await supabase
+    .from('missions')
+    .select(MISSION_SELECT_WITH_NAMES)
+    .eq('id', missionId)
+    .single();
+  if (error || !data) return null;
+  return toMission(data as unknown as MissionRow);
 }
 
 export async function listMissionsForAgent(agentId: string): Promise<MissionWithNames[]> {

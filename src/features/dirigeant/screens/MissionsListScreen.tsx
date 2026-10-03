@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
@@ -7,6 +7,11 @@ import type { MissionsStackParamList } from '../../../navigation/DirigeantStack'
 import { supabase } from '../../../lib/supabase';
 import { listAllMissions, type MissionWithNames } from '../../../lib/missionsApi';
 import { listSwapRequestsForOrg } from '../../../lib/swapApi';
+import {
+  listOvertimeRequestsForOrg,
+  respondToOvertimeRequest,
+  type MissionOvertimeRequestWithNames,
+} from '../../../lib/overtimeApi';
 import type { MissionStatus } from '../../../types/domain';
 import { colors, spacing, radius, typography, cardShadow } from '../../../theme';
 
@@ -100,10 +105,55 @@ function MissionRow({ mission, onReassign }: { mission: MissionWithNames; onReas
   );
 }
 
+function OvertimeRequestRow({
+  request,
+  onChanged,
+}: {
+  request: MissionOvertimeRequestWithNames;
+  onChanged: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+
+  async function respond(status: 'accepted' | 'refused') {
+    setBusy(true);
+    try {
+      const { error } = await respondToOvertimeRequest(request.id, status);
+      if (error) {
+        Alert.alert('Erreur', error);
+        return;
+      }
+      onChanged();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <View style={styles.overtimeRow}>
+      <Text style={styles.overtimeRowText}>
+        {request.agentName} demande {request.requestedMinutes} min — {request.siteName}
+      </Text>
+      {busy ? (
+        <ActivityIndicator color={colors.purple} />
+      ) : (
+        <View style={styles.overtimeActions}>
+          <Pressable style={styles.overtimeAcceptButton} onPress={() => respond('accepted')}>
+            <Feather name="check" size={13} color={colors.textOnPrimary} />
+          </Pressable>
+          <Pressable style={styles.overtimeRefuseButton} onPress={() => respond('refused')}>
+            <Feather name="x" size={13} color={colors.danger} />
+          </Pressable>
+        </View>
+      )}
+    </View>
+  );
+}
+
 export default function MissionsListScreen({ navigation }: Props) {
   const queryClient = useQueryClient();
   const missionsQuery = useQuery({ queryKey: ['missions', 'all'], queryFn: listAllMissions });
   const swapQuery = useQuery({ queryKey: ['swapRequests', 'org'], queryFn: listSwapRequestsForOrg });
+  const overtimeQuery = useQuery({ queryKey: ['overtimeRequests', 'org'], queryFn: listOvertimeRequestsForOrg });
   const [swapExpanded, setSwapExpanded] = useState(false);
 
   useEffect(() => {
@@ -132,7 +182,21 @@ export default function MissionsListScreen({ navigation }: Props) {
     };
   }, [queryClient]);
 
+  useEffect(() => {
+    const channel = supabase
+      .channel('overtime-requests-dirigeant')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'mission_overtime_requests' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['overtimeRequests', 'org'] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
   const openSwapRequests = (swapQuery.data ?? []).filter((r) => r.status === 'requested');
+  const openOvertimeRequests = (overtimeQuery.data ?? []).filter((r) => r.status === 'requested');
 
   return (
     <View style={styles.container}>
@@ -140,6 +204,24 @@ export default function MissionsListScreen({ navigation }: Props) {
         <Feather name="plus" size={17} color={colors.textOnPrimary} />
         <Text style={styles.createButtonText}>Nouvelle mission</Text>
       </Pressable>
+
+      {openOvertimeRequests.length > 0 && (
+        <View style={styles.overtimeSection}>
+          <View style={styles.overtimeSectionHeader}>
+            <Feather name="alert-circle" size={14} color={colors.purple} />
+            <Text style={styles.swapHeaderText}>
+              Demandes d'heures sup ({openOvertimeRequests.length})
+            </Text>
+          </View>
+          {openOvertimeRequests.map((r) => (
+            <OvertimeRequestRow
+              key={r.id}
+              request={r}
+              onChanged={() => queryClient.invalidateQueries({ queryKey: ['overtimeRequests', 'org'] })}
+            />
+          ))}
+        </View>
+      )}
 
       {openSwapRequests.length > 0 && (
         <View style={styles.swapSection}>
@@ -222,6 +304,47 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(124,58,237,0.15)',
   },
   swapRowText: { fontSize: 13, color: colors.purple },
+  overtimeSection: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.purpleLight,
+    overflow: 'hidden',
+  },
+  overtimeSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: 10,
+    paddingHorizontal: spacing.md,
+  },
+  overtimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(124,58,237,0.15)',
+  },
+  overtimeRowText: { fontSize: 13, color: colors.purple, flex: 1 },
+  overtimeActions: { flexDirection: 'row', gap: spacing.xs },
+  overtimeAcceptButton: {
+    backgroundColor: colors.success,
+    borderRadius: radius.sm,
+    padding: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  overtimeRefuseButton: {
+    borderWidth: 1,
+    borderColor: colors.danger,
+    borderRadius: radius.sm,
+    padding: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   row: {
     backgroundColor: colors.surface,
     borderRadius: radius.md,

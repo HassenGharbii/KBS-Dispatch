@@ -14,16 +14,28 @@ export async function createMission(formData: FormData) {
   const agentId = String(formData.get("agentId") ?? "");
   const isBroadcast = formData.get("isBroadcast") === "on";
   const scheduledStartLocal = String(formData.get("scheduledStart") ?? ""); // "YYYY-MM-DDTHH:mm"
+  const scheduledEndLocal = String(formData.get("scheduledEnd") ?? "");
   const instructions = String(formData.get("instructions") ?? "").trim();
 
-  if (!siteId || !scheduledStartLocal || (!isBroadcast && !agentId)) {
-    return { error: "Site, agent (ou diffusion) et date sont requis" };
+  if (!siteId || !scheduledStartLocal || !scheduledEndLocal || (!isBroadcast && !agentId)) {
+    return { error: "Site, agent (ou diffusion), date de début et date de fin sont requis" };
   }
 
   // <input type="datetime-local"> has no timezone; treat it as the caller's
   // local wall-clock time (same assumption the mobile create form makes).
   const scheduledStart = new Date(scheduledStartLocal);
-  if (Number.isNaN(scheduledStart.getTime())) return { error: "Date invalide" };
+  const scheduledEnd = new Date(scheduledEndLocal);
+  if (Number.isNaN(scheduledStart.getTime()) || Number.isNaN(scheduledEnd.getTime())) {
+    return { error: "Date invalide" };
+  }
+  // Mirrors the server-side enforce_mission_create_timing trigger, which is
+  // the real enforcement -- this just avoids a confusing round trip.
+  if (scheduledStart.getTime() - Date.now() < 10 * 60 * 1000) {
+    return { error: "Une mission doit être créée au moins 10 minutes avant son début" };
+  }
+  if (scheduledEnd.getTime() <= scheduledStart.getTime()) {
+    return { error: "La fin de mission doit être après son début" };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.from("missions").insert({
@@ -31,6 +43,7 @@ export async function createMission(formData: FormData) {
     agent_id: isBroadcast ? null : agentId,
     created_by: profile.id,
     scheduled_start: scheduledStart.toISOString(),
+    scheduled_end: scheduledEnd.toISOString(),
     instructions: instructions || null,
     is_broadcast: isBroadcast,
   });
