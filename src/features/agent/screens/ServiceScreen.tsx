@@ -203,10 +203,9 @@ export default function ServiceScreen({ navigation }: Props) {
           <Feather name="shield-off" size={30} color={colors.textMuted} />
         </View>
         <Text style={styles.emptyTitle}>Vous n'êtes pas en service</Text>
-        <Pressable style={styles.primaryButton} onPress={() => navigation.navigate('SitePicker')}>
-          <Feather name="play" size={17} color={colors.textOnPrimary} />
-          <Text style={styles.primaryButtonText}>Prendre le service</Text>
-        </Pressable>
+        <Text style={styles.emptySubtitle}>
+          La prise de service se fait depuis une mission acceptée, dans l'onglet Missions.
+        </Text>
         <Pressable style={styles.signOutLink} onPress={() => signOut()}>
           <Feather name="log-out" size={14} color={colors.textSecondary} />
           <Text style={styles.signOutLinkText}>Se déconnecter</Text>
@@ -333,6 +332,12 @@ const styles = StyleSheet.create({
     ...cardShadow,
   },
   emptyTitle: { ...typography.heading, color: colors.textPrimary },
+  emptySubtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: spacing.xl,
+  },
   signOutLink: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.sm },
   signOutLinkText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
   header: {

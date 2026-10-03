@@ -6,7 +6,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme';
 
 import ServiceScreen from '../features/agent/screens/ServiceScreen';
-import SitePickerScreen from '../features/agent/screens/SitePickerScreen';
 import EventEntryScreen from '../features/agent/screens/EventEntryScreen';
 import EventDetailScreen from '../features/agent/screens/EventDetailScreen';
 import ShiftSummaryScreen from '../features/agent/screens/ShiftSummaryScreen';
@@ -19,7 +18,6 @@ import { MissionLocationTrackerMount } from '../features/agent/MissionLocationTr
 
 export type ServiceStackParamList = {
   Service: undefined;
-  SitePicker: undefined;
   EventEntry: { shiftId: string };
   EventDetail: { eventId: string };
   ShiftSummary: { shiftId: string };
@@ -44,11 +42,6 @@ function ServiceStack() {
         name="Service"
         component={ServiceScreen}
         options={{ title: 'Service' }}
-      />
-      <ServiceStackNav.Screen
-        name="SitePicker"
-        component={SitePickerScreen}
-        options={{ title: 'Choisir un site' }}
       />
       <ServiceStackNav.Screen
         name="EventEntry"
